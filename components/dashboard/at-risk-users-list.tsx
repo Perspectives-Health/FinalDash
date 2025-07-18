@@ -43,6 +43,20 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
     return `${diffDays} days ago`
   }
 
+  const formatHoursAgo = (hours: number) => {
+    if (hours < 24) {
+      return `${hours} hours ago`
+    } else {
+      const days = Math.floor(hours / 24)
+      const remainingHours = hours % 24
+      if (remainingHours === 0) {
+        return `${days} days`
+      } else {
+        return `${days} days ${remainingHours} hours`
+      }
+    }
+  }
+
   const handleUserClick = (user: any) => {
     setSelectedUser(user)
     // onUserClick(user.id, user.email)
@@ -121,7 +135,7 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
 
                   <div className="flex items-center ml-4 space-x-3">
                     <div className="text-right">
-                      <span className={`text-sm font-bold ${risk.color}`}>{user.hoursSince} hours ago</span>
+                      <span className={`text-sm font-bold ${risk.color}`}>{formatHoursAgo(user.hoursSince)}</span>
                       <p className="text-xs text-gray-500 capitalize">{risk.level} risk</p>
                     </div>
                     <Icon className={`w-5 h-5 ${risk.color}`} />
