@@ -50,6 +50,8 @@ export default function TrendChart({
   const fillMissingDates = (data: Array<{ date: string; value: number; emails?: string[] }>) => {
     if (data.length === 0) return []
     
+    console.log("fillMissingDates input data:", data)
+    
     const currentYear = new Date().getFullYear()
     const sortedData = [...data].sort((a, b) => {
       const dateA = new Date(`${currentYear}-${a.date}`)
@@ -57,8 +59,15 @@ export default function TrendChart({
       return dateA.getTime() - dateB.getTime()
     })
     
+    console.log("sortedData after sort:", sortedData)
+    
     const startDate = new Date(`${currentYear}-${sortedData[0].date}`)
-    const endDate = new Date()
+    startDate.setHours(0, 0, 0, 0) // Set to midnight
+    
+    const endDate = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))
+    endDate.setHours(23, 59, 59, 999) // Set to end of day
+    
+    console.log("startDate:", startDate, "endDate:", endDate)
     
     const filledData = []
     const dataMap = new Map(sortedData.map(item => [item.date, item]))
@@ -74,10 +83,19 @@ export default function TrendChart({
         filledData.push({ date: dateStr, value: 0, emails: [] })
       }
     }
+    
+    console.log("fillMissingDates output:", filledData)
     return filledData
   }
 
   const filledData = fillMissingDates(data)
+  
+  console.log("Chart labels:", filledData.map((item) => {
+    const date = new Date(item.date)
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  }))
+  
+  console.log("Chart data values:", filledData.map((item) => item.value))
   
   const chartData = {
     labels: filledData.map((item) => {

@@ -121,17 +121,23 @@ export default function DashboardLayout({ metrics, loading, onUserClick }: Dashb
         {/* DAU Graph and MetricCards (left, spans 2 columns) */}
         <div className="flex flex-col gap-4 lg:col-span-2">
           <TrendChart
-            data={metrics.dau
-              .slice(0, 30)
-              .reverse()
-              .map((item) => {
+            data={(() => {
+              console.log("Raw DAU data:", metrics.dau)
+              const sliced = metrics.dau.slice(0, 30)
+              console.log("After slice(0, 30):", sliced)
+              const reversed = sliced.reverse()
+              console.log("After reverse():", reversed)
+              const mapped = reversed.map((item) => {
                 console.log("DAU item before mapping:", item)
                 return {
                   date: item.date,
                   value: item.unique_users,
                   emails: item.user_emails,
                 }
-              })}
+              })
+              console.log("Final mapped data for TrendChart:", mapped)
+              return mapped
+            })()}
             title=""
             color="#3b82f6"
             height={300}
