@@ -1,11 +1,35 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/internal/dashboard"
 
-async function apiRequest(endpoint: string) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`)
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`)
+// Debug: Log the API base URL
+console.log("API_BASE_URL:", API_BASE_URL)
+
+async function apiRequest(endpoint: string, retries = 3) {
+  const fullUrl = `${API_BASE_URL}${endpoint}`
+  console.log("Making API request to:", fullUrl)
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+      
+      return response.json()
+    } catch (error) {
+      console.error(`API request failed (attempt ${i + 1}/${retries}):`, error)
+      if (i === retries - 1) {
+        throw error
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000))
+    }
   }
-  return response.json()
 }
 
 export const api = {
