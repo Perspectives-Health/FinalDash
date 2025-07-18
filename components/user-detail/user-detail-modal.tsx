@@ -117,9 +117,6 @@ export default function UserDetailModal({ isOpen, userId, userEmail, onClose }: 
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">USER DETAIL VIEW</h2>
-          </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-md transition-colors">
             <X className="w-5 h-5" />
           </button>
