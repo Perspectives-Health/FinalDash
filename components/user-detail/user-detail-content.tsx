@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useMemo, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Download, ClipboardCopy } from "lucide-react"
 import { useUserDetails } from "@/hooks/use-user-details"
 import LoadingSpinner from "@/components/shared/loading-spinner"
@@ -13,6 +13,8 @@ import AudioPlayer from "@/components/shared/audio-player"
 interface UserDetailContentProps {
   userId: string
   userEmail: string
+  targetSessionId?: string | null
+  targetWorkflowId?: string | null
 }
 
 // Define JsonToPopulateItem type at the top-level (outside the component)
@@ -46,9 +48,8 @@ function CopyButton({ value }: { value: string }) {
   )
 }
 
-export default function UserDetailContent({ userId, userEmail }: UserDetailContentProps) {
+export default function UserDetailContent({ userId, userEmail, targetSessionId, targetWorkflowId }: UserDetailContentProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [showWorkflowQAModal, setShowWorkflowQAModal] = useState(false)
@@ -61,36 +62,28 @@ export default function UserDetailContent({ userId, userEmail }: UserDetailConte
 
   // Handle URL-based expansion on component mount and when sessions change
   useEffect(() => {
-    const sessionId = searchParams.get('session_id')
-    const workflowId = searchParams.get('workflow_id')
-    
-    if (sessionId && workflowId && sessions) {
-      const uniqueId = `${sessionId}-${workflowId}`
+    if (targetSessionId && targetWorkflowId && sessions) {
+      const uniqueId = `${targetSessionId}-${targetWorkflowId}`
       // Verify this session exists in our current data
       const sessionExists = sessions.some(session => 
-        session.session_id === sessionId && session.workflow_id === workflowId
+        session.session_id === targetSessionId && session.workflow_id === targetWorkflowId
       )
       
       if (sessionExists) {
         setExpandedRows(new Set([uniqueId]))
       }
     }
-  }, [searchParams, sessions])
+  }, [targetSessionId, targetWorkflowId, sessions])
 
   const toggleRowExpansion = (uniqueId: string, session_id: string, workflow_id: string) => {
     if (expandedRows.has(uniqueId)) {
-      // Closing expanded row - remove URL params
+      // Closing expanded row - navigate to user page without session
       setExpandedRows(new Set())
-      router.push('/users', { scroll: false })
+      router.push(`/users/${userId}`, { scroll: false })
     } else {
-      // Opening new row - update URL params
+      // Opening new row - navigate to user page with session and workflow
       setExpandedRows(new Set([uniqueId]))
-      
-      const params = new URLSearchParams()
-      params.set('session_id', session_id)
-      params.set('workflow_id', workflow_id)
-      
-      router.push(`/users?${params.toString()}`, { scroll: false })
+      router.push(`/users/${userId}/${session_id}/${workflow_id}`, { scroll: false })
     }
   }
 

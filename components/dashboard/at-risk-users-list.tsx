@@ -80,8 +80,8 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
 
   const handleUserClick = async (user: any) => {
     if (user.hasNeverUsed) {
-      // If user has never used the product, redirect to users page without session params
-      router.push(`/users`)
+      // If user has never used the product, redirect to user page
+      router.push(`/users/${user.id}`)
       return
     }
 
@@ -99,16 +99,16 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
         
         const mostRecentSession = sortedSessions[0]
         
-        // Redirect to users page with session parameters
-        router.push(`/users?session_id=${mostRecentSession.session_id}&workflow_id=${mostRecentSession.workflow_id}`)
+        // Redirect to unified URL pattern with session and workflow
+        router.push(`/users/${user.id}/${mostRecentSession.session_id}/${mostRecentSession.workflow_id}`)
       } else {
-        // No sessions found, redirect to users page without session params
-        router.push(`/users`)
+        // No sessions found, redirect to user page without session params
+        router.push(`/users/${user.id}`)
       }
     } catch (error) {
       console.error("Error fetching user sessions:", error)
-      // On error, still redirect to users page without session params
-      router.push(`/users`)
+      // On error, still redirect to user page without session params
+      router.push(`/users/${user.id}`)
     } finally {
       setLoadingUserId(null)
     }
