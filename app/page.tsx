@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard/dashboard-layout"
-import UserDetailModal from "@/components/user-detail/user-detail-modal"
 import { useMetrics } from "@/hooks/use-metrics"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
@@ -43,22 +41,9 @@ function formatDateLabel(dataDateStr: string): string {
 }
 
 export default function Dashboard() {
-  const [selectedUser, setSelectedUser] = useState<{
-    userId: string
-    email: string
-  } | null>(null)
-
   const { metrics, loading, error, refreshMetrics } = useMetrics()
 
   const { isConnected } = useRealTimeUpdates(refreshMetrics)
-
-  const handleUserClick = (userId: string, email: string) => {
-    setSelectedUser({ userId, email })
-  }
-
-  const handleCloseModal = () => {
-    setSelectedUser(null)
-  }
 
   if (error) {
     return (
@@ -75,13 +60,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <div className="dashboard-container max-w-[1400px] mx-auto p-6">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <nav className="flex space-x-1">
+        <div className="bg-white border-b border-gray-200 p-6">
+          <div className="max-w-[1400px] mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <nav className="flex space-x-1">
                 <Link 
                   href="/"
                   className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md"
@@ -94,8 +80,8 @@ export default function Dashboard() {
                 >
                   Browse Users & Sessions
                 </Link>
-              </nav>
-            </div>
+                </nav>
+              </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
@@ -132,19 +118,11 @@ export default function Dashboard() {
                 )}
               </button>
             </div>
+            </div>
           </div>
         </div>
 
-        <DashboardLayout metrics={metrics} loading={loading} onUserClick={handleUserClick} />
-
-        {selectedUser && (
-          <UserDetailModal
-            isOpen={true}
-            userId={selectedUser.userId}
-            userEmail={selectedUser.email}
-            onClose={handleCloseModal}
-          />
-        )}
+        <DashboardLayout metrics={metrics} loading={loading} />
       </div>
     </div>
   )

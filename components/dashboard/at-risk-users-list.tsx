@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { AlertTriangle, Clock, Eye } from "lucide-react"
-import UserDetailContent from "@/components/user-detail/user-detail-content"
+import { api } from "@/services/api"
 
 interface AtRiskUsersListProps {
   users: Array<{
@@ -11,12 +12,12 @@ interface AtRiskUsersListProps {
     last_use_pacific: string
     center_name?: string
   }>
-  onUserClick: (userId: string, email: string) => void
 }
 
-export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListProps) {
+export default function AtRiskUsersList({ users }: AtRiskUsersListProps) {
   const [showAll, setShowAll] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<{id: string, email: string} | null>(null)
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
+  const router = useRouter()
 
   // Users are already filtered by backend to be >36 hours inactive
   const atRiskUsers = users
@@ -76,9 +77,40 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
     }
   }
 
-  const handleUserClick = (user: any) => {
-    setSelectedUser(user)
-    // onUserClick(user.id, user.email)
+  const handleUserClick = async (user: any) => {
+    if (user.hasNeverUsed) {
+      // If user has never used the product, redirect to user page
+      router.push(`/users/${user.id}`)
+      return
+    }
+
+    setLoadingUserId(user.id)
+    
+    try {
+      // Fetch user sessions to find the most recent one
+      const sessions = await api.getUserSessions(user.id)
+      
+      if (sessions && sessions.length > 0) {
+        // Sort sessions by created_at descending to get the most recent
+        const sortedSessions = sessions.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        
+        const mostRecentSession = sortedSessions[0]
+        
+        // Redirect to unified URL pattern with session and workflow
+        router.push(`/users/${user.id}/${mostRecentSession.session_id}/${mostRecentSession.workflow_id}`)
+      } else {
+        // No sessions found, redirect to user page without session params
+        router.push(`/users/${user.id}`)
+      }
+    } catch (error) {
+      console.error("Error fetching user sessions:", error)
+      // On error, still redirect to user page without session params
+      router.push(`/users/${user.id}`)
+    } finally {
+      setLoadingUserId(null)
+    }
   }
 
   const getRiskLevel = (hours: number) => {
@@ -137,7 +169,7 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
               return (
                 <div
                   key={user.id}
-                  className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all duration-200 border ${risk.bgColor} hover:shadow-md`}
+                  className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all duration-200 border ${risk.bgColor} hover:shadow-md ${loadingUserId === user.id ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={() => handleUserClick(user)}
                 >
                   <div className="flex items-center flex-1 min-w-0 space-x-3">
@@ -157,38 +189,17 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
                       <span className={`text-sm font-bold ${risk.color}`}>{formatHoursAgo(user.hoursSince, user.hasNeverUsed)}</span>
                       <p className="text-xs text-gray-500 capitalize">{risk.level} risk</p>
                     </div>
-                    <Icon className={`w-5 h-5 ${risk.color}`} />
+                    {loadingUserId === user.id ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-blue-600" />
+                    ) : (
+                      <Icon className={`w-5 h-5 ${risk.color}`} />
+                    )}
                   </div>
                 </div>
               )
             })}
           </div>
         </>
-      )}
-      
-      {/* User Detail Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-none h-full max-h-[90vh] flex flex-col" style={{ width: 'calc(100vw - 2rem)', maxWidth: '95vw' }}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">User Details</h2>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <UserDetailContent
-                userId={selectedUser.id}
-                userEmail={selectedUser.email}
-              />
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )

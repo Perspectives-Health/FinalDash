@@ -210,21 +210,11 @@ export default function TrendChart({
           <div className="text-center">
             <p className="text-black font-bold text-2xl leading-tight">
               DAU: {usersToday ?? (filledData[filledData.length - 1]?.value ?? 0)}
-              {usersChange && (
-                <span className={`text-lg ml-2 ${usersChange.direction === "up" ? "text-green-600" : "text-red-600"}`}>
-                  {usersChange.direction === "up" ? "↑" : "↓"}{Math.abs(usersChange.value)}
-                </span>
-              )}
             </p>
           </div>
           <div className="text-center">
             <p className="text-black font-bold text-2xl leading-tight">
               Sessions: {sessionsToday ?? 0}
-              {sessionsChange && (
-                <span className={`text-lg ml-2 ${sessionsChange.direction === "up" ? "text-green-600" : "text-red-600"}`}>
-                  {sessionsChange.direction === "up" ? "↑" : "↓"}{Math.abs(sessionsChange.value)}
-                </span>
-              )}
             </p>
           </div>
         </div>

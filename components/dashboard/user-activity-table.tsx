@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { ChevronRight, BarChart3 } from "lucide-react"
 
 interface UserActivityTableProps {
@@ -10,13 +11,13 @@ interface UserActivityTableProps {
     total_sessions: number
     latest_pacific_time: string
   }>
-  onUserClick: (userId: string, email: string) => void
   maxRows?: number
   dateLabel?: string
 }
 
-export default function UserActivityTable({ data, onUserClick, maxRows = 10, dateLabel = "TODAY" }: UserActivityTableProps) {
+export default function UserActivityTable({ data, maxRows = 10, dateLabel = "TODAY" }: UserActivityTableProps) {
   const [showAll, setShowAll] = useState(false)
+  const router = useRouter()
 
   const sortedData = [...data].sort((a, b) => b.total_sessions - a.total_sessions)
   const displayData = showAll ? sortedData : sortedData.slice(0, maxRows)
@@ -37,7 +38,7 @@ export default function UserActivityTable({ data, onUserClick, maxRows = 10, dat
           <div
             key={user.email}
             className="flex items-center justify-between p-4 rounded-lg hover:bg-blue-50 cursor-pointer transition-all duration-200 border border-transparent hover:border-blue-200"
-            onClick={() => onUserClick(user.user_id, user.email)}
+            onClick={() => router.push(`/users/${user.user_id}`)}
           >
             <div className="flex items-center flex-1 min-w-0 space-x-4">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
