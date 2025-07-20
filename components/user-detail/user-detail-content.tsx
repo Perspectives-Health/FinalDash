@@ -104,7 +104,7 @@ export default function UserDetailContent({ userId, userEmail }: UserDetailConte
     if (diffHours < 1) return "Less than 1 hour ago"
     if (diffHours < 24) return `${diffHours} hours ago`
     const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays} days ago`
+    return `${diffDays} day(s) ago`
   }
 
   // Helper for Q&A modal metrics
