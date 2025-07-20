@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { User, Clock, Building } from "lucide-react"
 import { api } from "@/services/api"
@@ -15,6 +16,7 @@ interface UserData {
 type SortBy = 'recent_session' | 'center_name'
 
 export default function UsersPage() {
+  const searchParams = useSearchParams()
   const [users, setUsers] = useState<UserData[]>([])
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,9 +34,69 @@ export default function UsersPage() {
       const data = await api.getUsersWithSessionAndCenter(sortBy)
       setUsers(data)
       
-      // Auto-select first user if none selected or if sorting changed
-      if (data.length > 0 && (!selectedUser || !data.find(u => u.user_id === selectedUser.user_id))) {
-        setSelectedUser(data[0])
+      // Check if URL has session parameters for deep linking
+      const urlSessionId = searchParams.get('session_id')
+      const urlWorkflowId = searchParams.get('workflow_id')
+      
+      if (urlSessionId && urlWorkflowId && data.length > 0) {
+        // Improved parallel session fetching with timeout and better error handling
+        try {
+          console.log('Starting parallel session lookup for URL params:', { urlSessionId, urlWorkflowId })
+          
+          const sessionPromises = data.map(async (user) => {
+            try {
+              // Add timeout wrapper for individual API calls
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 5000) // 5 second timeout per user
+              )
+              
+              const sessionPromise = api.getUserSessions(user.user_id)
+              const sessions = await Promise.race([sessionPromise, timeoutPromise])
+              
+              console.log(`Fetched ${sessions.length} sessions for user ${user.email}`)
+              return { user, sessions, success: true }
+            } catch (error) {
+              console.warn(`Failed to fetch sessions for user ${user.user_id} (${user.email}):`, error)
+              return { user, sessions: [], success: false }
+            }
+          })
+          
+          // Wait for all with timeout
+          const timeoutAll = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Overall timeout')), 10000) // 10 second overall timeout
+          )
+          
+          const allUserSessions = await Promise.race([
+            Promise.all(sessionPromises),
+            timeoutAll
+          ])
+          
+          console.log('All session data loaded, searching for match...')
+          
+          // Find user with matching session
+          const matchingUserData = allUserSessions.find(({ sessions, success }) =>
+            success && sessions.some(session => 
+              session.session_id === urlSessionId && session.workflow_id === urlWorkflowId
+            )
+          )
+          
+          if (matchingUserData) {
+            console.log('Found matching user:', matchingUserData.user.email)
+            setSelectedUser(matchingUserData.user)
+          } else {
+            console.log('No matching session found, selecting first user')
+            setSelectedUser(data[0])
+          }
+        } catch (error) {
+          console.error("Error during session lookup:", error)
+          // Always fallback to first user on any error
+          setSelectedUser(data[0])
+        }
+      } else {
+        // Normal behavior: auto-select first user if none selected or if sorting changed
+        if (data.length > 0 && (!selectedUser || !data.find(u => u.user_id === selectedUser.user_id))) {
+          setSelectedUser(data[0])
+        }
       }
     } catch (error) {
       console.error("Error fetching users:", error)

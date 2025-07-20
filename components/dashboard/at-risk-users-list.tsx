@@ -21,12 +21,28 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
   // Users are already filtered by backend to be >36 hours inactive
   const atRiskUsers = users
     .map((user) => {
+      // Handle cases where user has never used the product
+      if (!user.last_use_pacific || user.last_use_pacific === 'null' || user.last_use_pacific === 'undefined') {
+        return { ...user, daysSince: Infinity, hoursSince: Infinity, hasNeverUsed: true }
+      }
+      
       const lastUse = new Date(user.last_use_pacific)
+      // Check if the date is invalid
+      if (isNaN(lastUse.getTime())) {
+        return { ...user, daysSince: Infinity, hoursSince: Infinity, hasNeverUsed: true }
+      }
+      
       const hoursSince = Math.floor((Date.now() - lastUse.getTime()) / (1000 * 60 * 60))
       const daysSince = Math.floor(hoursSince / 24)
-      return { ...user, daysSince, hoursSince }
+      return { ...user, daysSince, hoursSince, hasNeverUsed: false }
     })
-    .sort((a, b) => b.hoursSince - a.hoursSince)
+    .sort((a, b) => {
+      // Sort users who never used to the end, others by hoursSince desc
+      if (a.hasNeverUsed && !b.hasNeverUsed) return 1
+      if (!a.hasNeverUsed && b.hasNeverUsed) return -1
+      if (a.hasNeverUsed && b.hasNeverUsed) return 0
+      return b.hoursSince - a.hoursSince
+    })
 
   const displayUsers = showAll ? atRiskUsers : atRiskUsers.slice(0, 5)
 
@@ -43,7 +59,10 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
     return `${diffDays} days ago`
   }
 
-  const formatHoursAgo = (hours: number) => {
+  const formatHoursAgo = (hours: number, hasNeverUsed: boolean = false) => {
+    if (hasNeverUsed) {
+      return "Never used"
+    }
     if (hours < 24) {
       return `${hours} hours ago`
     } else {
@@ -111,8 +130,8 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
       ) : (
         <>
           <div className="space-y-3">
-            {displayUsers.map((user) => {
-              const risk = getRiskLevel(user.hoursSince)
+            {displayUsers.map((user: any) => {
+              const risk = getRiskLevel(user.hasNeverUsed ? 72 : user.hoursSince) // Default to critical for never used
               const Icon = risk.icon
 
               return (
@@ -128,14 +147,14 @@ export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListP
                         {user.email}
                       </p>
                       <p className="text-xs text-gray-600 mt-1">
-                        Last seen: {new Date(user.last_use_pacific).toLocaleDateString()}
+                        Last seen: {user.hasNeverUsed ? "Never" : new Date(user.last_use_pacific).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center ml-4 space-x-3">
                     <div className="text-right">
-                      <span className={`text-sm font-bold ${risk.color}`}>{formatHoursAgo(user.hoursSince)}</span>
+                      <span className={`text-sm font-bold ${risk.color}`}>{formatHoursAgo(user.hoursSince, user.hasNeverUsed)}</span>
                       <p className="text-xs text-gray-500 capitalize">{risk.level} risk</p>
                     </div>
                     <Icon className={`w-5 h-5 ${risk.color}`} />
