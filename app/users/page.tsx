@@ -59,7 +59,7 @@ export default function UsersPage() {
     if (diffHours < 1) return 'Less than 1 hour ago'
     if (diffHours < 24) return `${diffHours} hours ago`
     if (diffDays === 1) return '1 day ago'
-    return `${diffDays} days ago`
+    return `${diffDays} day(s) ago`
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {

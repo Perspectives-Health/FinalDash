@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/internal/dashboard"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/dashboard"
 
 // Debug: Log the API base URL
 console.log("API_BASE_URL:", API_BASE_URL)
@@ -34,42 +34,46 @@ async function apiRequest(endpoint: string, retries = 3) {
 
 export const api = {
   async getUsersToday() {
-    return apiRequest("/metrics/users-today")
+    return apiRequest("/users-today")
   },
 
   async getLastUse() {
-    return apiRequest("/users/last-use")
+    return apiRequest("/last-use")
   },
 
   async getDAU() {
-    return apiRequest("/metrics/dau")
+    return apiRequest("/dau")
   },
 
   async getWeeklyUsers() {
-    return apiRequest("/metrics/weekly")
+    return apiRequest("/weekly-users")
   },
 
   async getSessionsTodayByUser() {
-    return apiRequest("/sessions/today/by-user")
+    return apiRequest("/sessions-today-by-user")
   },
 
   async getSessionsToday() {
-    return apiRequest("/sessions/today")
+    return apiRequest("/sessions-today")
   },
 
   async getAllSessions() {
-    return apiRequest("/sessions/")
+    return apiRequest("/all-sessions")
   },
 
   async getUserSessions(userId: string) {
-    return apiRequest(`/users/${userId}/sessions`)
+    return apiRequest(`/user-sessions/${userId}`)
   },
 
   async getAllUsers() {
-    return apiRequest("/users")
+    return apiRequest("/all-users")
   },
 
   async getUsersWithSessionAndCenter(sortBy: 'recent_session' | 'center_name' = 'recent_session') {
-    return apiRequest(`/users/with-session-and-center?sort_by=${sortBy}`)
+    return apiRequest(`/users-with-centers?sort_by=${sortBy}`)
+  },
+
+  async getHealthCheck() {
+    return apiRequest("/health")
   },
 }
