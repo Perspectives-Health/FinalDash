@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Download, ClipboardCopy } from "lucide-react"
 import { useUserDetails } from "@/hooks/use-user-details"
 import LoadingSpinner from "@/components/shared/loading-spinner"
@@ -46,6 +47,8 @@ function CopyButton({ value }: { value: string }) {
 }
 
 export default function UserDetailContent({ userId, userEmail }: UserDetailContentProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [showWorkflowQAModal, setShowWorkflowQAModal] = useState(false)
@@ -56,11 +59,38 @@ export default function UserDetailContent({ userId, userEmail }: UserDetailConte
 
   const { sessions, loading, error } = useUserDetails(userId, true)
 
-  const toggleRowExpansion = (sessionId: string) => {
-    if (expandedRows.has(sessionId)) {
+  // Handle URL-based expansion on component mount and when sessions change
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id')
+    const workflowId = searchParams.get('workflow_id')
+    
+    if (sessionId && workflowId && sessions) {
+      const uniqueId = `${sessionId}-${workflowId}`
+      // Verify this session exists in our current data
+      const sessionExists = sessions.some(session => 
+        session.session_id === sessionId && session.workflow_id === workflowId
+      )
+      
+      if (sessionExists) {
+        setExpandedRows(new Set([uniqueId]))
+      }
+    }
+  }, [searchParams, sessions])
+
+  const toggleRowExpansion = (uniqueId: string, session_id: string, workflow_id: string) => {
+    if (expandedRows.has(uniqueId)) {
+      // Closing expanded row - remove URL params
       setExpandedRows(new Set())
+      router.push('/users', { scroll: false })
     } else {
-      setExpandedRows(new Set([sessionId]))
+      // Opening new row - update URL params
+      setExpandedRows(new Set([uniqueId]))
+      
+      const params = new URLSearchParams()
+      params.set('session_id', session_id)
+      params.set('workflow_id', workflow_id)
+      
+      router.push(`/users?${params.toString()}`, { scroll: false })
     }
   }
 
@@ -210,7 +240,7 @@ export default function UserDetailContent({ userId, userEmail }: UserDetailConte
                       <tr 
                         key={uniqueId} 
                         className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => toggleRowExpansion(uniqueId)}
+                        onClick={() => toggleRowExpansion(uniqueId, session.session_id, session.workflow_id)}
                       >
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                           {new Date(session.created_at).toLocaleDateString()}
@@ -689,7 +719,7 @@ export default function UserDetailContent({ userId, userEmail }: UserDetailConte
 
                               <div className="flex justify-end">
                                 <button
-                                  onClick={() => toggleRowExpansion(uniqueId)}
+                                  onClick={() => toggleRowExpansion(uniqueId, session.session_id, session.workflow_id)}
                                   className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                                 >
                                   Collapse Details
