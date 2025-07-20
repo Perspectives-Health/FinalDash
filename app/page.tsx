@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard/dashboard-layout"
-import UserDetailModal from "@/components/user-detail/user-detail-modal"
 import { useMetrics } from "@/hooks/use-metrics"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
@@ -43,22 +41,9 @@ function formatDateLabel(dataDateStr: string): string {
 }
 
 export default function Dashboard() {
-  const [selectedUser, setSelectedUser] = useState<{
-    userId: string
-    email: string
-  } | null>(null)
-
   const { metrics, loading, error, refreshMetrics } = useMetrics()
 
   const { isConnected } = useRealTimeUpdates(refreshMetrics)
-
-  const handleUserClick = (userId: string, email: string) => {
-    setSelectedUser({ userId, email })
-  }
-
-  const handleCloseModal = () => {
-    setSelectedUser(null)
-  }
 
   if (error) {
     return (
@@ -137,16 +122,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <DashboardLayout metrics={metrics} loading={loading} onUserClick={handleUserClick} />
-
-        {selectedUser && (
-          <UserDetailModal
-            isOpen={true}
-            userId={selectedUser.userId}
-            userEmail={selectedUser.email}
-            onClose={handleCloseModal}
-          />
-        )}
+        <DashboardLayout metrics={metrics} loading={loading} />
       </div>
     </div>
   )

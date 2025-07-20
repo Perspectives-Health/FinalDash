@@ -12,10 +12,9 @@ interface AtRiskUsersListProps {
     last_use_pacific: string
     center_name?: string
   }>
-  onUserClick: (userId: string, email: string) => void
 }
 
-export default function AtRiskUsersList({ users, onUserClick }: AtRiskUsersListProps) {
+export default function AtRiskUsersList({ users }: AtRiskUsersListProps) {
   const [showAll, setShowAll] = useState(false)
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
   const router = useRouter()

@@ -53,11 +53,10 @@ function getCurrentPSTTime(): string {
 interface DashboardLayoutProps {
   metrics: MetricsData | null
   loading: boolean
-  onUserClick: (userId: string, email: string) => void
   onTimeInfoReady?: (timeInfo: { currentTime: string; metricInfo: string }) => void
 }
 
-export default function DashboardLayout({ metrics, loading, onUserClick }: DashboardLayoutProps) {
+export default function DashboardLayout({ metrics, loading }: DashboardLayoutProps) {
   if (loading && !metrics) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -148,13 +147,12 @@ export default function DashboardLayout({ metrics, loading, onUserClick }: Dashb
           />
           <UserActivityTable 
             data={metrics.sessionsTodayByUser} 
-            onUserClick={onUserClick} 
             maxRows={10}
             dateLabel={sessionDataLabel}
           />
         </div>
         {/* At-Risk Users (right) */}
-        <AtRiskUsersList users={metrics.lastUse} onUserClick={onUserClick} />
+        <AtRiskUsersList users={metrics.lastUse} />
       </div>
 
       {/* Third Row - Details */}
