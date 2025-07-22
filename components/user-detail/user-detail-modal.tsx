@@ -433,22 +433,30 @@ export default function UserDetailModal({ isOpen, userId, userEmail, onClose }: 
                   </button>
 
                   <div className="flex space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const page = i + 1
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-2 text-sm rounded-md ${
-                            currentPage === page
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    })}
+                    {(() => {
+                      const maxVisiblePages = 5;
+                      const startPage = totalPages > maxVisiblePages 
+                        ? Math.max(1, Math.floor((currentPage - 1) / maxVisiblePages) * maxVisiblePages + 1)
+                        : 1;
+                      const endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
+                      
+                      return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                        const page = startPage + i;
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm rounded-md ${
+                              currentPage === page
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   <button
