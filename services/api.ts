@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/dashboard"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://165.227.120.106:5001/dashboard"
 
 // Debug: Log the API base URL
 console.log("API_BASE_URL:", API_BASE_URL)
