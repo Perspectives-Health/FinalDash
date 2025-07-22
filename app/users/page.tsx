@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { User, Clock, Building } from "lucide-react"
@@ -15,7 +15,7 @@ interface UserData {
 
 type SortBy = 'recent_session' | 'center_name'
 
-export default function UsersPage() {
+function UsersPageContent() {
   const searchParams = useSearchParams()
   const [users, setUsers] = useState<UserData[]>([])
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
@@ -306,5 +306,17 @@ export default function UsersPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading users...</div>
+      </div>
+    }>
+      <UsersPageContent />
+    </Suspense>
   )
 }
