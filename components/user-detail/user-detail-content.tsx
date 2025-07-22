@@ -77,13 +77,13 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
 
   const toggleRowExpansion = (uniqueId: string, session_id: string, workflow_id: string) => {
     if (expandedRows.has(uniqueId)) {
-      // Closing expanded row - navigate to user page without session
+      // Closing expanded row - update state only, use replace to avoid navigation
       setExpandedRows(new Set())
-      router.push(`/users/${userId}`, { scroll: false })
+      window.history.replaceState({}, '', `/users/${userId}`)
     } else {
-      // Opening new row - navigate to user page with session and workflow
+      // Opening new row - update state and URL without causing navigation
       setExpandedRows(new Set([uniqueId]))
-      router.push(`/users/${userId}/${session_id}/${workflow_id}`, { scroll: false })
+      window.history.replaceState({}, '', `/users/${userId}/${session_id}/${workflow_id}`)
     }
   }
 
@@ -561,7 +561,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                           }
                                                           // Fallback: show as JSON
                                                           return <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">{JSON.stringify(transcript, null, 2)}</pre>
-                                                        })()}
+                                                        })()
+                                                        }
                                                       </div>
                                                     </div>
                                                   </div>
@@ -653,30 +654,6 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                       <span className="text-gray-600">Workflow Status:</span>
                                       <StatusBadge status={session.workflow_status} className="text-xs" />
                                     </div>
-                                    {session.json_to_populate && (
-                                      (() => {
-                                        let data: any = session.json_to_populate
-                                        if (typeof data === 'string') {
-                                          try {
-                                            data = JSON.parse(data)
-                                          } catch {
-                                            return null
-                                          }
-                                        }
-                                        if (data && typeof data === 'object' && !Array.isArray(data)) {
-                                          const entries = Object.entries(data)
-                                          if (entries.length > 0 && (entries[0][1] as JsonToPopulateItem)?.processed_question_text) {
-                                            const qaMetrics = getQAMetrics(data)
-                                            return (
-                                              <>
-                                                {/* The Q&A button is now rendered outside the Workflow Information card */}
-                                              </>
-                                            )
-                                          }
-                                        }
-                                        return null
-                                      })()
-                                    )}
                                   </div>
                                 </div>
 
@@ -741,22 +718,30 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                 </button>
 
                 <div className="flex space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 text-sm rounded-md ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  })}
+                  {(() => {
+                    const maxVisiblePages = 5;
+                    const startPage = totalPages > maxVisiblePages 
+                      ? Math.max(1, Math.floor((currentPage - 1) / maxVisiblePages) * maxVisiblePages + 1)
+                      : 1;
+                    const endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
+                    
+                    return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                      const page = startPage + i;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 text-sm rounded-md ${
+                            currentPage === page
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
 
                 <button
