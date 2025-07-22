@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   description: "Monitor user activity and identify at-risk users for early intervention",
     generator: 'v0.dev'
 }
-
 export default function RootLayout({
   children,
 }: {
