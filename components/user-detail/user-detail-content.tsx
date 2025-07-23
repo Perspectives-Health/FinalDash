@@ -1,14 +1,13 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Download, ClipboardCopy } from "lucide-react"
 import { useUserDetails } from "@/hooks/use-user-details"
 import LoadingSpinner from "@/components/shared/loading-spinner"
 import StatusBadge from "@/components/shared/status-badge"
 import AudioPlayer from "@/components/shared/audio-player"
+import { api } from "@/services/api"
 
 interface UserDetailContentProps {
   userId: string
@@ -53,6 +52,16 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [showWorkflowQAModal, setShowWorkflowQAModal] = useState(false)
+  const [showEditPopulateModal, setShowEditPopulateModal] = useState(false)
+  const [editedQuestions, setEditedQuestions] = useState<Record<string, string>>({})
+  const [isPopulating, setIsPopulating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
+  const [currentSession, setCurrentSession] = useState<any>(null)
+  const [populateStatus, setPopulateStatus] = useState<string>('')
+  const [populateError, setPopulateError] = useState<string>('')
+  const leftPanelRef = useRef<HTMLDivElement>(null)
+  const rightPanelRef = useRef<HTMLDivElement>(null)
   const [answeredSearch, setAnsweredSearch] = useState("")
   const [unansweredSearch, setUnansweredSearch] = useState("")
   const [transcriptSearch, setTranscriptSearch] = useState("")
@@ -116,6 +125,165 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
   const paginatedSessions = sessions?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
 
   const totalPages = Math.ceil((sessions?.length || 0) / itemsPerPage)
+
+  const handleParallelScroll = (source: 'left' | 'right') => {
+    return (e: React.UIEvent<HTMLDivElement>) => {
+      const sourceElement = e.currentTarget
+      const targetElement = source === 'left' ? rightPanelRef.current : leftPanelRef.current
+      
+      if (targetElement && sourceElement) {
+        targetElement.scrollTop = sourceElement.scrollTop
+      }
+    }
+  }
+
+  const handleQuestionChange = (key: string, value: string) => {
+    setEditedQuestions(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleRetryPopulate = async (sessionId: string, workflowId: string) => {
+    try {
+      setIsPopulating(true)
+      setPopulateError('')
+      setPopulateStatus('Starting populate process...')
+      
+      // Call retry populate API with userId
+      await api.retryPopulate(sessionId, workflowId, userId)
+      setPopulateStatus('Processing workflow data...')
+      
+      // Start polling for status
+      startPolling(sessionId, workflowId)
+      
+    } catch (error) {
+      console.error('Error retrying populate:', error)
+      setIsPopulating(false)
+      setPopulateError(`Failed to start populate: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setPopulateStatus('')
+    }
+  }
+
+  const startPolling = (sessionId: string, workflowId: string) => {
+    // Clear any existing polling
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+    }
+    
+    let pollCount = 0
+    const maxPolls = 100 // 5 minutes at 3 second intervals
+    
+    const interval = setInterval(async () => {
+      try {
+        pollCount++
+        setPopulateStatus(`Checking progress... (${Math.floor(pollCount * 3)}s)`)
+        
+        const workflowStatuses = await api.getWorkflowStatus(sessionId)
+        
+        // Find the status for our specific workflow
+        const workflowStatus = workflowStatuses.find((w: any) => w.workflow_id === workflowId)
+        
+        if (workflowStatus) {
+          const status = workflowStatus.status
+          
+          // Update status message based on workflow state
+          switch (status) {
+            case 'created':
+              setPopulateStatus('Initializing workflow...')
+              break
+            case 'ready_for_generation':
+              setPopulateStatus('Preparing to generate responses...')
+              break
+            case 'generating_workflow_responses':
+              setPopulateStatus('AI is generating responses...')
+              break
+            case 'post_processing':
+              setPopulateStatus('Finalizing responses...')
+              break
+            case 'ready_to_populate':
+            case 'completed':
+              // Stop polling and refresh data
+              clearInterval(interval)
+              setPollingInterval(null)
+              setIsPopulating(false)
+              setPopulateStatus('✅ Populate completed successfully!')
+              
+              // Refresh the user sessions to get updated data
+              setTimeout(async () => {
+                await refreshSessionData()
+                setPopulateStatus('')
+              }, 2000)
+              return
+            case 'error':
+              // Stop polling on error
+              clearInterval(interval)
+              setPollingInterval(null)
+              setIsPopulating(false)
+              setPopulateError('❌ Populate failed due to an error. Please try again.')
+              setPopulateStatus('')
+              return
+          }
+        }
+        
+        // Check if we've exceeded max polling time
+        if (pollCount >= maxPolls) {
+          clearInterval(interval)
+          setPollingInterval(null)
+          setIsPopulating(false)
+          setPopulateError('⏰ Populate timed out after 5 minutes. The process may still be running in the background.')
+          setPopulateStatus('')
+        }
+        
+      } catch (error) {
+        console.error('Error polling workflow status:', error)
+        
+        // Check if it's an auth error (401, 403, or "Not authenticated")
+        if (error instanceof Error && (error.message.includes('401') || error.message.includes('403') || error.message.includes('Forbidden') || error.message.includes('Not authenticated'))) {
+          // Stop polling on auth error and provide manual refresh option
+          clearInterval(interval)
+          setPollingInterval(null)
+          setIsPopulating(false)
+          setPopulateError('⚠️ Authentication required for status check. Please refresh manually to check if populate completed.')
+          setPopulateStatus('')
+          return
+        }
+        
+        setPopulateStatus(`Connection error... retrying (${Math.floor(pollCount * 3)}s)`)
+        // Continue polling on other errors
+      }
+    }, 3000) // Poll every 3 seconds
+    
+    setPollingInterval(interval)
+  }
+
+  const refreshSessionData = async () => {
+    try {
+      // Force refresh of user details by refetching
+      window.location.reload() // Simple approach for now
+    } catch (error) {
+      console.error('Error refreshing session data:', error)
+    }
+  }
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+      }
+    }
+  }, [pollingInterval])
+
+  // Reset populate state when modal closes
+  useEffect(() => {
+    if (!showEditPopulateModal) {
+      setPopulateStatus('')
+      setPopulateError('')
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+        setPollingInterval(null)
+      }
+      setIsPopulating(false)
+    }
+  }, [showEditPopulateModal, pollingInterval])
 
   const getLastActiveTime = () => {
     if (!sessions || sessions.length === 0) return "Never"
@@ -229,9 +397,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                   {paginatedSessions.map((session) => {
                     const uniqueId = `${session.session_id}-${session.workflow_id}`
                     return (
-                    <>
+                    <React.Fragment key={uniqueId}>
                       <tr 
-                        key={uniqueId} 
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => toggleRowExpansion(uniqueId, session.session_id, session.workflow_id)}
                       >
@@ -302,6 +469,12 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                               onClick={() => setShowWorkflowQAModal(true)}
                                             >
                                               View Workflow Q&amp;A ({entries.length})
+                                            </button>
+                                            <button
+                                              className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-semibold ml-2"
+                                              onClick={() => setShowEditPopulateModal(true)}
+                                            >
+                                              Edit &amp; Populate
                                             </button>
                                             {showWorkflowQAModal && (
                                               <div
@@ -569,6 +742,153 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                 </div>
                                               </div>
                                             )}
+                                            {showEditPopulateModal && (
+                                              <div
+                                                className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4"
+                                                onClick={() => setShowEditPopulateModal(false)}
+                                              >
+                                                <div
+                                                  className="relative w-[90vw] h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                                                  onClick={e => e.stopPropagation()}
+                                                >
+                                                  {/* Modal Header */}
+                                                  <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-8 py-6 flex flex-col gap-2 rounded-t-2xl">
+                                                    <button
+                                                      className="absolute top-6 right-8 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                                                      onClick={() => setShowEditPopulateModal(false)}
+                                                      aria-label="Close"
+                                                    >
+                                                      &times;
+                                                    </button>
+                                                    <div className="flex items-center justify-between">
+                                                      <h3 className="text-xl font-bold text-gray-900">Edit & Populate Workflow</h3>
+                                                      <div className="flex gap-3">
+                                                        <button 
+                                                          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[140px]"
+                                                          onClick={() => handleRetryPopulate(session.session_id, session.workflow_id)}
+                                                          disabled={isPopulating}
+                                                        >
+                                                          {isPopulating && (
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                          )}
+                                                          {isPopulating ? 'Processing...' : 'Re-run Populate'}
+                                                        </button>
+                                                        <button 
+                                                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold disabled:opacity-50"
+                                                          disabled={isPopulating}
+                                                        >
+                                                          Save Changes
+                                                        </button>
+                                                        {populateError.includes('Authentication required') && (
+                                                          <button 
+                                                            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm font-semibold"
+                                                            onClick={() => refreshSessionData()}
+                                                          >
+                                                            Refresh Data
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                      <div className="text-sm text-gray-600">
+                                                        Session: {session.session_id} | Workflow: {session.workflow_id}
+                                                      </div>
+                                                      {(populateStatus || populateError) && (
+                                                        <div className="flex items-center gap-2">
+                                                          {populateStatus && (
+                                                            <div className="flex items-center gap-2 text-sm text-blue-600">
+                                                              <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                              {populateStatus}
+                                                            </div>
+                                                          )}
+                                                          {populateError && (
+                                                            <div className="text-sm text-red-600 max-w-md">
+                                                              {populateError}
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  {/* Modal Content: 2 columns */}
+                                                  <div className="flex-1 flex gap-6 min-h-0 px-8 py-6 overflow-hidden">
+                                                    {/* Left Panel: Questions */}
+                                                    <div className="w-1/2 flex flex-col h-full">
+                                                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Questions</h4>
+                                                      <div 
+                                                        ref={leftPanelRef}
+                                                        className="overflow-y-auto flex-1 space-y-4 pr-2"
+                                                        onScroll={handleParallelScroll('left')}
+                                                      >
+                                                        {entries.map(([key, item]) => {
+                                                          const q: JsonToPopulateItem = item as JsonToPopulateItem
+                                                          const currentValue = editedQuestions[key] ?? (q.processed_question_text?.trim() || q.question_text || '')
+                                                          const answerText = q.answer || ''
+                                                          
+                                                          // Calculate height based on longer content
+                                                          const questionLines = Math.ceil(currentValue.length / 50)
+                                                          const answerLines = Math.ceil(answerText.length / 50)
+                                                          const contentHeight = Math.max(questionLines, answerLines, 3) * 24 + 30
+                                                          const containerHeight = contentHeight + 80
+                                                          
+                                                          return (
+                                                            <div key={key} className="bg-white border rounded-lg shadow-sm p-4" style={{ height: containerHeight }}>
+                                                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Question {key}
+                                                              </label>
+                                                              <textarea
+                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                style={{ height: contentHeight }}
+                                                                value={currentValue}
+                                                                onChange={(e) => handleQuestionChange(key, e.target.value)}
+                                                                placeholder="Enter question text..."
+                                                              />
+                                                            </div>
+                                                          )
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    {/* Right Panel: Answers */}
+                                                    <div className="w-1/2 flex flex-col h-full">
+                                                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Answers</h4>
+                                                      <div 
+                                                        ref={rightPanelRef}
+                                                        className="overflow-y-auto flex-1 space-y-4 pr-2"
+                                                        onScroll={handleParallelScroll('right')}
+                                                      >
+                                                        {entries.map(([key, item]) => {
+                                                          const q: JsonToPopulateItem = item as JsonToPopulateItem
+                                                          const currentValue = editedQuestions[key] ?? (q.processed_question_text?.trim() || q.question_text || '')
+                                                          const answerText = q.answer || ''
+                                                          
+                                                          // Calculate height based on longer content
+                                                          const questionLines = Math.ceil(currentValue.length / 50)
+                                                          const answerLines = Math.ceil(answerText.length / 50)
+                                                          const contentHeight = Math.max(questionLines, answerLines, 3) * 24 + 30
+                                                          const containerHeight = contentHeight + 80
+                                                          
+                                                          return (
+                                                            <div key={key} className="bg-white border rounded-lg shadow-sm p-4" style={{ height: containerHeight }}>
+                                                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Answer {key}
+                                                              </label>
+                                                              <div 
+                                                                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700 overflow-y-auto"
+                                                                style={{ height: contentHeight }}
+                                                              >
+                                                                {q.answer || <span className="text-gray-400 italic">No answer provided</span>}
+                                                              </div>
+                                                            </div>
+                                                          )
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
                                           </>
                                         )
                                       }
@@ -699,7 +1019,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                     )
                   })}
                 </tbody>

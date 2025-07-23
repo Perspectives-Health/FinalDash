@@ -1,5 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/dashboard"
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://165.227.120.106:5001/dashboard"
 // Debug: Log the API base URL
 console.log("API_BASE_URL:", API_BASE_URL)
 
@@ -75,5 +74,46 @@ export const api = {
 
   async getHealthCheck() {
     return apiRequest("/health")
+  },
+
+  async retryPopulate(sessionId: string, workflowId: string, userId: string) {
+    const fullUrl = `${API_BASE_URL.replace('/dashboard', '')}/retry`
+    console.log("Making retry populate request to:", fullUrl)
+    
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        workflow_id: workflowId,
+        user_id: userId
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Retry populate failed: ${response.status} ${response.statusText}`)
+    }
+    
+    return response.json()
+  },
+
+  async getWorkflowStatus(sessionId: string) {
+    const fullUrl = `${API_BASE_URL.replace('/dashboard', '')}/clinical-sessions/${sessionId}/all-status`
+    console.log("Making workflow status request to:", fullUrl)
+    
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Get workflow status failed: ${response.status} ${response.statusText}`)
+    }
+    
+    return response.json()
   },
 }
