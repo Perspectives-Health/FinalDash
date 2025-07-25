@@ -147,11 +147,12 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       setPopulateError('')
       setPopulateStatus('Starting populate process...')
       
-      // Call retry populate API with userId
+      // Call retry populate API directly with the workflow template ID
+      // The workflow_id from the session data is now the correct template ID
       await api.retryPopulate(sessionId, workflowId, userId)
       setPopulateStatus('Processing workflow data...')
       
-      // Start polling for status
+      // Start polling for status using the workflow ID
       startPolling(sessionId, workflowId)
       
     } catch (error) {
