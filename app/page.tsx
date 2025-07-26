@@ -2,8 +2,13 @@
 
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard/dashboard-layout"
+import LoginForm from "@/components/auth/login-form"
+import LoadingSpinner from "@/components/shared/loading-spinner"
 import { useMetrics } from "@/hooks/use-metrics"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
+import { useAuth } from "@/hooks/use-auth.tsx"
+import { AuthenticationError } from "@/services/api"
+import { useEffect } from "react"
 
 // Helper functions for date/time display
 function getCurrentPSTTime(): string {
@@ -41,19 +46,44 @@ function formatDateLabel(dataDateStr: string): string {
 }
 
 export default function Dashboard() {
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth()
   const { metrics, loading, error, refreshMetrics } = useMetrics()
 
   const { isConnected } = useRealTimeUpdates(refreshMetrics)
 
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingSpinner size="large" />
+      </div>
+    )
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <LoginForm />
+  }
+
+  // Handle API errors, including authentication errors
   if (error) {
+    const isAuthError = error.includes('Authentication failed') || error.includes('403') || error.includes('401')
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button onClick={refreshMetrics} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-            Retry
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button onClick={refreshMetrics} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              Retry
+            </button>
+            {isAuthError && (
+              <button onClick={logout} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                Login Again
+              </button>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -116,6 +146,15 @@ export default function Dashboard() {
                     Refresh
                   </>
                 )}
+              </button>
+              <button
+                onClick={logout}
+                className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-all duration-200 flex items-center gap-1"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
               </button>
             </div>
             </div>
