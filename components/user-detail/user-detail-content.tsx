@@ -22,6 +22,7 @@ interface JsonToPopulateItem {
   question_text?: string;
   answer?: string;
   evidence?: string;
+  type: string;
 }
 
 // CopyButton component for IDs
@@ -162,6 +163,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       setCurrentSession(foundSession || null)
     }
     
+    // Clear all cached state when opening a new session/workflow
+    setEditedQuestions({})
     setTestPopulateResult(null)
     setPopulateError('')
     setSaveSuccess(false)
@@ -362,6 +365,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       setPopulateStatus('')
       setPopulateError('')
       setSaveSuccess(false)
+      setEditedQuestions({}) // Clear cached question edits
       if (pollingInterval) {
         clearInterval(pollingInterval)
         setPollingInterval(null)
@@ -1070,13 +1074,20 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                           const questionLines = Math.ceil(currentValue.length / 50)
                                                           const answerLines = Math.ceil(answerText.length / 50)
                                                           const contentHeight = Math.max(questionLines, answerLines, 3) * 24 + 30
-                                                          const containerHeight = contentHeight + 80
+                                                          const containerHeight = contentHeight + 100
                                                           
                                                           return (
                                                             <div key={key} className="bg-white border rounded-lg shadow-sm p-4" style={{ height: containerHeight }}>
-                                                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Question {key}
-                                                              </label>
+                                                              <div className="flex justify-between items-center mb-2">
+                                                                <label className="block text-sm font-medium text-gray-700">
+                                                                  Question {key}
+                                                                </label>
+                                                                {q.type && (
+                                                                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                                    {q.type}
+                                                                  </span>
+                                                                )}
+                                                              </div>
                                                               <textarea
                                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                 style={{ height: contentHeight }}
@@ -1182,7 +1193,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                             const answerText = q.answer || ''
                                                             const answerLines = Math.ceil(answerText.length / 50)
                                                             const contentHeight = Math.max(questionLines, answerLines, 3) * 24 + 30
-                                                            const containerHeight = contentHeight + 80
+                                                            const containerHeight = contentHeight + 100
                                                             
                                                             return (
                                                               <div key={key} className="bg-white border rounded-lg shadow-sm p-4" style={{ height: containerHeight }}>
