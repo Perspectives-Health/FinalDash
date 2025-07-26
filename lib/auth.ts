@@ -88,7 +88,9 @@ export const auth = {
    * Login user and store tokens
    */
   async login(email: string, password: string): Promise<LoginResponse> {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://165.227.120.106:5001"
+    const API_BASE_URL = process.env.NODE_ENV === 'production'
+      ? "https://perspectiveshealth.ddns.net" 
+      : "http://localhost:5001"
     
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
