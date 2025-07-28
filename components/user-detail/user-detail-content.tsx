@@ -969,7 +969,6 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                             {showEditPopulateModal && (
                                               <div
                                                 className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4"
-                                                onClick={() => setShowEditPopulateModal(false)}
                                               >
                                                 <div
                                                   className="relative w-[90vw] h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
