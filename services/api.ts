@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_ENV === 'prod' 
   ? "https://perspectiveshealth.ddns.net" 
-  : "http://localhost"
+  : "http://localhost:5001"
 // Debug: Log the API base URL
 console.log("API_BASE_URL:", API_BASE_URL)
 
