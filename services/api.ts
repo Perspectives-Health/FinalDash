@@ -149,7 +149,7 @@ export const api = {
     return response.json()
   },
 
-  async testPopulate(sessionId: string, workflowId: string, customProcessedQuestions: string[], userId: string) {
+  async testPopulate(sessionId: string, workflowId: string, customProcessedQuestions: Record<string, string>, userId: string) {
     const fullUrl = `${API_BASE_URL}/dashboard/test-populate`
     console.log("🚨 FRONTEND API CALL STARTING")
     console.log("🚨 Making test populate request to:", fullUrl)
@@ -188,7 +188,7 @@ export const api = {
     return response.json()
   },
 
-  async saveQuestions(workflowId: string, newProcessedQuestions: string[]) {
+  async saveQuestions(workflowId: string, newProcessedQuestions: Record<string, string>) {
     const fullUrl = `${API_BASE_URL}/dashboard/save-questions`
     console.log("Making save questions request to:", fullUrl)
     

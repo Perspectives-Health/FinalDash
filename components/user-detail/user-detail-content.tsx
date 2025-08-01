@@ -183,21 +183,24 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
     
     // Get the current questions from the session data and any edits
     const entries = Object.entries(currentSession.json_to_populate || {})
-    const questions = entries.map(([key, item]) => {
+    const questionMapping: Record<string, string> = {}
+    
+    entries.forEach(([key, item]) => {
       const q: JsonToPopulateItem = item as JsonToPopulateItem
       const originalQuestion = q.processed_question_text?.trim() || q.question_text || ''
-      return editedQuestions[key] || originalQuestion
+      const finalQuestion = editedQuestions[key] || originalQuestion
+      questionMapping[key] = finalQuestion
     })
     
-    console.log('🚨 TESTING POPULATE WITH QUESTIONS:', questions)
-    console.log('🚨 Number of questions:', questions.length)
+    console.log('🚨 TESTING POPULATE WITH QUESTION MAPPING:', questionMapping)
+    console.log('🚨 Number of questions:', Object.keys(questionMapping).length)
     
     try {
       setIsPopulating(true)
       const result = await api.testPopulate(
         currentEditingSession.sessionId,
         currentEditingSession.workflowId,
-        questions,
+        questionMapping,
         userId
       )
       setTestPopulateResult(result)
@@ -215,20 +218,23 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
     
     // Get the current questions from the session data and any edits
     const entries = Object.entries(currentSession.json_to_populate || {})
-    const questions = entries.map(([key, item]) => {
+    const questionMapping: Record<string, string> = {}
+    
+    entries.forEach(([key, item]) => {
       const q: JsonToPopulateItem = item as JsonToPopulateItem
       const originalQuestion = q.processed_question_text?.trim() || q.question_text || ''
-      return editedQuestions[key] || originalQuestion
+      const finalQuestion = editedQuestions[key] || originalQuestion
+      questionMapping[key] = finalQuestion
     })
     
-    console.log('💾 SAVING AND POPULATING WITH QUESTIONS:', questions)
-    console.log('💾 Number of questions:', questions.length)
+    console.log('💾 SAVING AND POPULATING WITH QUESTION MAPPING:', questionMapping)
+    console.log('💾 Number of questions:', Object.keys(questionMapping).length)
     
     try {
       setIsSaving(true)
       
       // First save the questions
-      await api.saveQuestions(currentEditingSession.workflowId, questions)
+      await api.saveQuestions(currentEditingSession.workflowId, questionMapping)
       console.log('✅ Questions saved successfully')
       setSaveSuccess(true)
       
@@ -1119,7 +1125,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                             // Get answer from test result or original
                                                             let answerContent
                                                             if (testPopulateResult?.success && answers.length > 0) {
-                                                              const answerObj = answers.find((a: any) => parseInt(a.index) === index + 1)
+                                                              const answerObj = answers.find((a: any) => a.index === key)
                                                               if (answerObj) {
                                                                 answerContent = (
                                                                   <div className="space-y-3">
