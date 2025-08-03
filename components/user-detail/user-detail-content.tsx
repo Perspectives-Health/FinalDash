@@ -163,43 +163,72 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
         throw new Error('No mapping data found')
       }
       
-      // Validate that the number of questions matches
-      const currentQuestionCount = Object.keys(currentSession.json_to_populate || {}).length
-      const mappingQuestionCount = Object.keys(mappingData.table_json_schema).length
-      
-      if (currentQuestionCount !== mappingQuestionCount) {
-        setPopulateError(`Question count mismatch: Session has ${currentQuestionCount} questions, but mapping has ${mappingQuestionCount}. Cannot load latest questions.`)
-        setTimeout(() => setPopulateError(''), 5000)
-        return
-      }
-      
       // Store original if not already stored
       if (!originalJsonToPopulate) {
         setOriginalJsonToPopulate(currentSession.json_to_populate)
       }
       
-      // Update the current session with the latest questions from mapping
+      // Start with existing session data (preserve everything)
       const updatedJsonToPopulate = { ...currentSession.json_to_populate }
       
-      Object.entries(mappingData.table_json_schema).forEach(([key, mappingItem]: [string, any]) => {
-        if (updatedJsonToPopulate[key]) {
-          // Update the question text while preserving answers
-          updatedJsonToPopulate[key] = {
-            ...updatedJsonToPopulate[key],
+      // Track what happens (same pattern as backend)
+      const processedPositions: string[] = []
+      const skippedPositions: string[] = []
+      const warnings: string[] = []
+      
+      // Process each position in the mapping (same logic as backend)
+      Object.entries(mappingData.table_json_schema).forEach(([position, mappingItem]: [string, any]) => {
+        const existingItem = currentSession.json_to_populate?.[position]
+        
+        if (existingItem) {
+          // Position exists in both - update question text, preserve answers
+          updatedJsonToPopulate[position] = {
+            ...existingItem,
             question_text: mappingItem.question_text,
             processed_question_text: mappingItem.processed_question_text,
             type: mappingItem.type
           }
+          processedPositions.push(position)
+        } else {
+          // Position exists in mapping but not session - add with empty answers
+          updatedJsonToPopulate[position] = {
+            question_text: mappingItem.question_text,
+            processed_question_text: mappingItem.processed_question_text,
+            type: mappingItem.type,
+            answer: '',
+            evidence: ''
+          }
+          processedPositions.push(position)
         }
       })
       
+      // Check for positions in session but not in mapping (skipped)
+      Object.keys(currentSession.json_to_populate || {}).forEach(position => {
+        if (!mappingData.table_json_schema[position]) {
+          skippedPositions.push(position)
+        }
+      })
+      
+      // Add warnings (same pattern as backend)
+      if (skippedPositions.length > 0) {
+        const skippedStr = skippedPositions.join(', ')
+        warnings.push(`Positions ${skippedStr} will keep original questions (not in latest mapping)`)
+      }
+      
+      // Update the current session with the synchronized questions
       setCurrentSession({
         ...currentSession,
         json_to_populate: updatedJsonToPopulate
       })
       
       setLatestQuestionsLoaded(true)
-      console.log('✅ Latest questions loaded successfully')
+      console.log(`✅ Latest questions loaded successfully. Processed: ${processedPositions.join(', ')}, Skipped: ${skippedPositions.join(', ')}`)
+      
+      // Show feedback if there are warnings
+      if (warnings.length > 0) {
+        setPopulateError(warnings.join('; '))
+        setTimeout(() => setPopulateError(''), 5000)
+      }
       
     } catch (error) {
       console.error('❌ Failed to load latest questions:', error)
