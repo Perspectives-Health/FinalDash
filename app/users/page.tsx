@@ -2,9 +2,10 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { User, Clock, Building } from "lucide-react"
+import { User, Clock, Building, Search } from "lucide-react"
 import { api } from "@/services/api"
 import UserDetailContent from "@/components/user-detail/user-detail-content"
+import { Input } from "@/components/ui/input"
 
 interface UserData {
   user_id: string
@@ -23,6 +24,7 @@ function UsersPageContent() {
   const [sortBy, setSortBy] = useState<SortBy>('recent_session')
   const [leftPanelWidth, setLeftPanelWidth] = useState(320) // Default 320px instead of 1/3
   const [isDragging, setIsDragging] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchUsers()
@@ -156,6 +158,14 @@ function UsersPageContent() {
 
 
 
+  // Filter users based on search query
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchQuery.toLowerCase()
+    return user.email.toLowerCase().includes(searchLower) ||
+           (user.center_name && user.center_name.toLowerCase().includes(searchLower)) ||
+           user.user_id.toLowerCase().includes(searchLower)
+  })
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -199,8 +209,20 @@ function UsersPageContent() {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900 flex items-center mb-4">
               <User className="w-5 h-5 mr-2 text-blue-600" />
-              Users ({users.length})
+              Users ({filteredUsers.length}{searchQuery && ` of ${users.length}`})
             </h2>
+            
+            {/* Search Bar */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-9 text-sm"
+              />
+            </div>
             
             {/* Sort Toggle Buttons */}
             <div className="flex space-x-2">
@@ -230,7 +252,19 @@ function UsersPageContent() {
           </div>
           
           <div className="flex-1 overflow-y-auto">
-            {users.map((user) => (
+            {filteredUsers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                <Search className="w-12 h-12 text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm">No users found matching "{searchQuery}"</p>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              filteredUsers.map((user) => (
               <div
                 key={user.user_id}
                 onClick={() => handleUserSelect(user)}
@@ -273,7 +307,8 @@ function UsersPageContent() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
 

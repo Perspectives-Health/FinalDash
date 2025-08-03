@@ -65,6 +65,9 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
   const [populateStatus, setPopulateStatus] = useState<string>('')
   const [populateError, setPopulateError] = useState<string>('')
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [isLoadingLatest, setIsLoadingLatest] = useState(false)
+  const [latestQuestionsLoaded, setLatestQuestionsLoaded] = useState(false)
+  const [originalJsonToPopulate, setOriginalJsonToPopulate] = useState<any>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
   const rightPanelRef = useRef<HTMLDivElement>(null)
   const [answeredSearch, setAnsweredSearch] = useState("")
@@ -147,20 +150,142 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
     setEditedQuestions(prev => ({ ...prev, [key]: value }))
   }
 
+  const handleLoadLatestQuestions = async () => {
+    if (!currentEditingSession || !currentSession) return
+    
+    console.log('🔄 Loading latest questions from workflow mapping...')
+    
+    try {
+      setIsLoadingLatest(true)
+      const mappingData = await api.getWorkflowMapping(currentEditingSession.workflowId)
+      
+      if (!mappingData || !mappingData.table_json_schema) {
+        throw new Error('No mapping data found')
+      }
+      
+      // Validate that the number of questions matches
+      const currentQuestionCount = Object.keys(currentSession.json_to_populate || {}).length
+      const mappingQuestionCount = Object.keys(mappingData.table_json_schema).length
+      
+      if (currentQuestionCount !== mappingQuestionCount) {
+        setPopulateError(`Question count mismatch: Session has ${currentQuestionCount} questions, but mapping has ${mappingQuestionCount}. Cannot load latest questions.`)
+        setTimeout(() => setPopulateError(''), 5000)
+        return
+      }
+      
+      // Store original if not already stored
+      if (!originalJsonToPopulate) {
+        setOriginalJsonToPopulate(currentSession.json_to_populate)
+      }
+      
+      // Update the current session with the latest questions from mapping
+      const updatedJsonToPopulate = { ...currentSession.json_to_populate }
+      
+      Object.entries(mappingData.table_json_schema).forEach(([key, mappingItem]: [string, any]) => {
+        if (updatedJsonToPopulate[key]) {
+          // Update the question text while preserving answers
+          updatedJsonToPopulate[key] = {
+            ...updatedJsonToPopulate[key],
+            question_text: mappingItem.question_text,
+            processed_question_text: mappingItem.processed_question_text,
+            type: mappingItem.type
+          }
+        }
+      })
+      
+      setCurrentSession({
+        ...currentSession,
+        json_to_populate: updatedJsonToPopulate
+      })
+      
+      setLatestQuestionsLoaded(true)
+      console.log('✅ Latest questions loaded successfully')
+      
+    } catch (error) {
+      console.error('❌ Failed to load latest questions:', error)
+      setPopulateError(`Failed to load latest questions: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setTimeout(() => setPopulateError(''), 5000)
+    } finally {
+      setIsLoadingLatest(false)
+    }
+  }
+
+  const handleRestoreOriginalQuestions = () => {
+    if (!currentSession) return
+    
+    console.log('↩️ Restoring session questions...')
+    
+    // Clear any edits to show the original questions from the session
+    setEditedQuestions({})
+    setLatestQuestionsLoaded(false)
+    
+    // If we have the true original saved, restore to that
+    if (originalJsonToPopulate) {
+      setCurrentSession({
+        ...currentSession,
+        json_to_populate: originalJsonToPopulate
+      })
+      console.log('✅ Original Session Questions restored')
+    } else {
+      console.log('⚠️ No original questions cached, showing current session state')
+    }
+  }
+
   const handleRetryPopulate = async (sessionId: string, workflowId: string, sessionData?: any) => {
     console.log('🚀 handleRetryPopulate called with:', { sessionId, workflowId, sessionData })
     
     // Set the current session and open the modal
     setCurrentEditingSession({ sessionId, workflowId })
     
-    // If sessionData is provided, use it; otherwise try to find it in the sessions array
-    if (sessionData) {
-      setCurrentSession(sessionData)
-    } else {
-      // Find the session in our sessions array
-      const foundSession = sessions?.find(s => s.session_id === sessionId && s.workflow_id === workflowId)
-      console.log('🔍 Found session:', foundSession)
-      setCurrentSession(foundSession || null)
+    try {
+      // Fetch fresh session data from the database
+      console.log('📡 Fetching fresh session data for user:', userId)
+      const freshSessions = await api.getUserSessions(userId)
+      
+      // Find the specific session we're editing
+      const freshSession = freshSessions.find(s => s.session_id === sessionId && s.workflow_id === workflowId)
+      
+      if (freshSession) {
+        console.log('✅ Found fresh session data with json_to_populate:', freshSession.json_to_populate)
+        setCurrentSession(freshSession)
+        // Only set originalJsonToPopulate if it hasn't been set yet (preserve the first load)
+        if (!originalJsonToPopulate) {
+          setOriginalJsonToPopulate(freshSession.json_to_populate)
+        }
+      } else if (sessionData) {
+        // Fallback to provided sessionData if not found in fresh data
+        console.log('⚠️ Session not found in fresh data, using provided sessionData')
+        setCurrentSession(sessionData)
+        // Only set originalJsonToPopulate if it hasn't been set yet (preserve the first load)
+        if (!originalJsonToPopulate) {
+          setOriginalJsonToPopulate(sessionData.json_to_populate)
+        }
+      } else {
+        // Last resort: try to find in existing sessions
+        const foundSession = sessions?.find(s => s.session_id === sessionId && s.workflow_id === workflowId)
+        console.log('🔍 Found session:', foundSession)
+        setCurrentSession(foundSession || null)
+        if (foundSession && !originalJsonToPopulate) {
+          setOriginalJsonToPopulate(foundSession.json_to_populate)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error fetching fresh session data:', error)
+      // Fallback to existing data on error
+      if (sessionData) {
+        setCurrentSession(sessionData)
+        // Only set originalJsonToPopulate if it hasn't been set yet (preserve the first load)
+        if (!originalJsonToPopulate) {
+          setOriginalJsonToPopulate(sessionData.json_to_populate)
+        }
+      } else {
+        const foundSession = sessions?.find(s => s.session_id === sessionId && s.workflow_id === workflowId)
+        console.log('🔍 Found session:', foundSession)
+        setCurrentSession(foundSession || null)
+        if (foundSession && !originalJsonToPopulate) {
+          setOriginalJsonToPopulate(foundSession.json_to_populate)
+        }
+      }
     }
     
     // Clear all cached state when opening a new session/workflow
@@ -168,6 +293,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
     setTestPopulateResult(null)
     setPopulateError('')
     setSaveSuccess(false)
+    setLatestQuestionsLoaded(false)
+    // Don't clear originalJsonToPopulate here - it gets set above based on the data
     setShowEditPopulateModal(true)
   }
 
@@ -238,18 +365,43 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       console.log('✅ Questions saved successfully')
       setSaveSuccess(true)
       
+      // Don't clear editedQuestions - keep showing the edited values
+      // until the modal is closed or fresh data confirms the save
+      
+      // Fetch fresh data to show the saved values
+      console.log('📡 Fetching fresh data after save...')
+      const freshSessions = await api.getUserSessions(userId)
+      
+      // Update current session with fresh data
+      const freshSession = freshSessions.find(s => 
+        s.session_id === currentEditingSession.sessionId && 
+        s.workflow_id === currentEditingSession.workflowId
+      )
+      if (freshSession) {
+        setCurrentSession(freshSession)
+        console.log('✅ Updated modal with fresh saved data')
+      }
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSaveSuccess(false)
+      }, 3000)
+      
       // Then start the populate process using the old retry endpoint
       setPopulateStatus('Starting populate process...')
       await api.retryPopulate(currentEditingSession.sessionId, currentEditingSession.workflowId, userId)
       setPopulateStatus('Processing workflow data...')
       
-      // Close the modal and start polling
-      setShowEditPopulateModal(false)
+      // Keep modal open and start polling
       startPolling(currentEditingSession.sessionId, currentEditingSession.workflowId)
       
     } catch (error) {
       console.error('❌ Save and populate failed:', error)
       setPopulateError(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        setPopulateError('')
+      }, 5000)
     } finally {
       setIsSaving(false)
     }
@@ -349,8 +501,21 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
 
   const refreshSessionData = async () => {
     try {
-      // Force refresh of user details by refetching
-      window.location.reload() // Simple approach for now
+      // Fetch fresh session data without reloading the page
+      console.log('📡 Refreshing session data...')
+      const freshSessions = await api.getUserSessions(userId)
+      
+      // If we have a current editing session, update it with fresh data
+      if (currentEditingSession) {
+        const freshSession = freshSessions.find(s => 
+          s.session_id === currentEditingSession.sessionId && 
+          s.workflow_id === currentEditingSession.workflowId
+        )
+        if (freshSession) {
+          setCurrentSession(freshSession)
+          console.log('✅ Session data refreshed')
+        }
+      }
     } catch (error) {
       console.error('Error refreshing session data:', error)
     }
@@ -371,7 +536,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       setPopulateStatus('')
       setPopulateError('')
       setSaveSuccess(false)
-      setEditedQuestions({}) // Clear cached question edits
+      // Don't clear editedQuestions - preserve edits during the session
       if (pollingInterval) {
         clearInterval(pollingInterval)
         setPollingInterval(null)
@@ -993,6 +1158,33 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                       <h3 className="text-xl font-bold text-gray-900">Edit & Populate Workflow</h3>
                                                       <div className="flex gap-3 mr-12">
                                                         <button 
+                                                          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                          onClick={(e) => {
+                                                            e.preventDefault()
+                                                            e.stopPropagation()
+                                                            handleLoadLatestQuestions()
+                                                          }}
+                                                          disabled={isLoadingLatest || isPopulating || isSaving}
+                                                        >
+                                                          {isLoadingLatest && (
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                          )}
+                                                          {isLoadingLatest ? 'Loading...' : latestQuestionsLoaded ? '✓ Latest Loaded' : 'Load Latest Questions'}
+                                                        </button>
+                                                        {latestQuestionsLoaded && (
+                                                          <button 
+                                                            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                            onClick={(e) => {
+                                                              e.preventDefault()
+                                                              e.stopPropagation()
+                                                              handleRestoreOriginalQuestions()
+                                                            }}
+                                                            disabled={isPopulating || isSaving}
+                                                          >
+                                                            Restore Session Questions
+                                                          </button>
+                                                        )}
+                                                        <button 
                                                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[140px]"
                                                           onClick={(e) => {
                                                             e.preventDefault()
@@ -1031,8 +1223,19 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                       </div>
                                                     </div>
                                                     <div className="flex items-center justify-between">
-                                                      <div className="text-sm text-gray-600">
-                                                        Session: {session.session_id} | Workflow: {session.workflow_id}
+                                                      <div className="flex items-center gap-4">
+                                                        <div className="text-sm text-gray-600">
+                                                          Session: {session.session_id} | Workflow: {session.workflow_id}
+                                                        </div>
+                                                        {(latestQuestionsLoaded || (!latestQuestionsLoaded && originalJsonToPopulate && currentSession?.json_to_populate === originalJsonToPopulate)) && (
+                                                          <div className="text-sm font-medium">
+                                                            {latestQuestionsLoaded ? (
+                                                              <span className="text-purple-600">Using Latest Questions</span>
+                                                            ) : (
+                                                              <span className="text-gray-600">Using Session Questions</span>
+                                                            )}
+                                                          </div>
+                                                        )}
                                                       </div>
                                                       {(saveSuccess || populateStatus || populateError) && (
                                                         <div className="flex items-center gap-2">
@@ -1070,9 +1273,11 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                         className="overflow-y-auto flex-1 space-y-4 pr-2"
                                                         onScroll={handleParallelScroll('left')}
                                                       >
-                                                        {entries.map(([key, item]) => {
-                                                          const q: JsonToPopulateItem = item as JsonToPopulateItem
-                                                          const currentValue = editedQuestions[key] ?? (q.processed_question_text?.trim() || q.question_text || '')
+                                                        {(() => {
+                                                          const modalEntries = Object.entries(currentSession?.json_to_populate || {})
+                                                          return modalEntries.map(([key, item]) => {
+                                                            const q: JsonToPopulateItem = item as JsonToPopulateItem
+                                                            const currentValue = editedQuestions[key] ?? (q.processed_question_text?.trim() || q.question_text || '')
                                                           const answerText = q.answer || ''
                                                           
                                                           // Calculate height based on longer content
@@ -1102,7 +1307,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                                                               />
                                                             </div>
                                                           )
-                                                        })}
+                                                          })
+                                                        })()}
                                                       </div>
                                                     </div>
                                                     

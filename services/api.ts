@@ -217,4 +217,8 @@ export const api = {
     
     return response.json()
   },
+
+  async getWorkflowMapping(workflowId: string) {
+    return apiRequest(`/dashboard/workflow-mapping/${workflowId}`)
+  },
 }
