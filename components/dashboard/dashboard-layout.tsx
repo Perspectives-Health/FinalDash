@@ -5,6 +5,7 @@ import TrendChart from "./trend-chart"
 import UserActivityTable from "./user-activity-table"
 import AtRiskUsersList from "./at-risk-users-list"
 import WeeklyHeatMap from "./weekly-heat-map"
+import ClinicalNotesReport from "./clinical-notes-report"
 import LoadingSpinner from "@/components/shared/loading-spinner"
 import type { MetricsData } from "@/types/metrics"
 
@@ -158,6 +159,7 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
       {/* Third Row - Details */}
       <div className="details-row grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* <WeeklyHeatMap data={metrics.weeklyUsers} /> */}
+        <ClinicalNotesReport />
       </div>
     </div>
   )

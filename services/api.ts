@@ -90,7 +90,7 @@ export const api = {
     return apiRequest("/dashboard/all-users")
   },
 
-  async getUsersWithSessionAndCenter(sortBy: 'recent_session' | 'center_name' = 'recent_session') {
+  async getUsersWithSessionAndCenter(sortBy: 'recent_session' | 'email' | 'center' = 'recent_session') {
     return apiRequest(`/dashboard/users-with-centers?sort_by=${sortBy}`)
   },
 
