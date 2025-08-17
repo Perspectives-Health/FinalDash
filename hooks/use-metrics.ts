@@ -8,14 +8,14 @@ export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [inactiveThresholdDays, setInactiveThresholdDays] = useState(30) // Default to 30 days
 
   const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Fetch all metrics in parallel
-      const [usersToday, lastUse, dau, weeklyUsers, sessionsTodayByUser, sessionsToday, allSessions] =
+      const [usersToday, lastUse, dau, weeklyUsers, sessionsTodayByUser, sessionsToday, allSessions, allUsersAnalyticsByCenter] =
         await Promise.all([
           api.getUsersToday(),
           api.getLastUse(),
@@ -24,6 +24,7 @@ export function useMetrics() {
           api.getSessionsTodayByUser(),
           api.getSessionsToday(),
           api.getAllSessions(),
+          api.getAllUsersAnalyticsByCenter(inactiveThresholdDays), // Pass threshold
         ])
 
       setMetrics({
@@ -34,6 +35,7 @@ export function useMetrics() {
         sessionsTodayByUser,
         sessionsToday,
         allSessions,
+        allUsersAnalyticsByCenter,
       })
     } catch (err) {
       console.error("Error fetching metrics:", err)
@@ -41,7 +43,7 @@ export function useMetrics() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [inactiveThresholdDays]) // Re-fetch when threshold changes
 
   useEffect(() => {
     fetchMetrics()
@@ -52,5 +54,7 @@ export function useMetrics() {
     loading,
     error,
     refreshMetrics: fetchMetrics,
+    inactiveThresholdDays,
+    setInactiveThresholdDays,
   }
 }

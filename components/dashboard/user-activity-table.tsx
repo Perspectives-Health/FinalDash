@@ -53,20 +53,9 @@ export default function UserActivityTable({ data, maxRows = 10, dateLabel = "TOD
               </div>
             </div>
 
-            <div className="flex items-center ml-4 space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-32 bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 shadow-sm"
-                    style={{
-                      width: `${(user.total_sessions / maxSessions) * 100}%`,
-                    }}
-                  />
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-bold text-gray-900">{user.total_sessions}</span>
-                  <p className="text-xs text-gray-500">sessions</p>
-                </div>
+            <div className="flex items-center ml-4 space-x-1">
+              <div className="text-right">
+                <span className="text-lg text-gray-900">{user.total_sessions} sessions</span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </div>

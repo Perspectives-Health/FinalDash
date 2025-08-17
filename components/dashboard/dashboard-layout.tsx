@@ -3,7 +3,8 @@
 import MetricCard from "./metric-card"
 import TrendChart from "./trend-chart"
 import UserActivityTable from "./user-activity-table"
-import AtRiskUsersList from "./at-risk-users-list"
+import AllUsersTable from "./AllUsersTable"
+// import AtRiskUsersList from "./at-risk-users-list"
 import WeeklyHeatMap from "./weekly-heat-map"
 import LoadingSpinner from "@/components/shared/loading-spinner"
 import type { MetricsData } from "@/types/metrics"
@@ -54,9 +55,10 @@ interface DashboardLayoutProps {
   metrics: MetricsData | null
   loading: boolean
   onTimeInfoReady?: (timeInfo: { currentTime: string; metricInfo: string }) => void
+  inactiveThresholdDays: number; // Add this prop
 }
 
-export default function DashboardLayout({ metrics, loading }: DashboardLayoutProps) {
+export default function DashboardLayout({ metrics, loading, inactiveThresholdDays }: DashboardLayoutProps) {
   if (loading && !metrics) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -117,7 +119,7 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
       {/* Top Row - Critical Metrics */}
       {/* Second Row - Trends */}
       <div className="trends-row grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* DAU Graph and MetricCards (left, spans 2 columns) */}
+        {/* DAU Graph and New User Analytics (left, spans 2 columns) */}
         <div className="flex flex-col gap-4 lg:col-span-2">
           <TrendChart
             data={(() => {
@@ -145,14 +147,14 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
             usersChange={usersChange ? { value: usersChange.value, direction: usersChange.direction } : undefined}
             sessionsChange={sessionsChange ? { value: sessionsChange.value, direction: sessionsChange.direction } : undefined}
           />
-          <UserActivityTable 
+          <AllUsersTable analyticsData={metrics.allUsersAnalyticsByCenter || null} loading={loading} />
+        </div>
+        {/* Today's User Activity (right) */}
+        <UserActivityTable 
             data={metrics.sessionsTodayByUser} 
             maxRows={10}
             dateLabel={sessionDataLabel}
           />
-        </div>
-        {/* At-Risk Users (right) */}
-        <AtRiskUsersList users={metrics.lastUse} />
       </div>
 
       {/* Third Row - Details */}

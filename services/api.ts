@@ -78,6 +78,10 @@ export const api = {
     return apiRequest("/dashboard/sessions-today")
   },
 
+  async getAllUsersAnalyticsByCenter(inactiveThresholdDays: number = 30) {
+    return apiRequest(`/dashboard/all-users-analytics-by-center?inactive_threshold_days=${inactiveThresholdDays}`)
+  },
+
   async getAllSessions() {
     return apiRequest("/dashboard/all-sessions")
   },
