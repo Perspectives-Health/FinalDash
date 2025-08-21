@@ -16,6 +16,18 @@ interface UserData {
 
 type SortBy = 'recent_session' | 'center_name'
 
+interface SessionData {
+  session_id: string;
+  workflow_id: string;
+  // Add other properties of a session if needed
+}
+
+interface UserSessionResult {
+  user: UserData;
+  sessions: SessionData[];
+  success: boolean;
+}
+
 function UsersPageContent() {
   const searchParams = useSearchParams()
   const [users, setUsers] = useState<UserData[]>([])
@@ -45,15 +57,15 @@ function UsersPageContent() {
         try {
           console.log('Starting parallel session lookup for URL params:', { urlSessionId, urlWorkflowId })
           
-          const sessionPromises = data.map(async (user) => {
+          const sessionPromises = data.map(async (user: UserData): Promise<UserSessionResult> => {
             try {
               // Add timeout wrapper for individual API calls
-              const timeoutPromise = new Promise((_, reject) =>
+              const timeoutPromise = new Promise<never>((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout')), 5000) // 5 second timeout per user
               )
               
               const sessionPromise = api.getUserSessions(user.user_id)
-              const sessions = await Promise.race([sessionPromise, timeoutPromise])
+              const sessions = await Promise.race<SessionData[]>([sessionPromise, timeoutPromise])
               
               console.log(`Fetched ${sessions.length} sessions for user ${user.email}`)
               return { user, sessions, success: true }
@@ -64,11 +76,11 @@ function UsersPageContent() {
           })
           
           // Wait for all with timeout
-          const timeoutAll = new Promise((_, reject) =>
+          const timeoutAll = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Overall timeout')), 10000) // 10 second overall timeout
           )
           
-          const allUserSessions = await Promise.race([
+          const allUserSessions: UserSessionResult[] = await Promise.race([
             Promise.all(sessionPromises),
             timeoutAll
           ])
@@ -76,8 +88,8 @@ function UsersPageContent() {
           console.log('All session data loaded, searching for match...')
           
           // Find user with matching session
-          const matchingUserData = allUserSessions.find(({ sessions, success }) =>
-            success && sessions.some(session => 
+          const matchingUserData = allUserSessions.find(({ sessions, success }: { sessions: SessionData[]; success: boolean }) =>
+            success && sessions.some((session: SessionData) => 
               session.session_id === urlSessionId && session.workflow_id === urlWorkflowId
             )
           )
@@ -96,7 +108,7 @@ function UsersPageContent() {
         }
       } else {
         // Normal behavior: auto-select first user if none selected or if sorting changed
-        if (data.length > 0 && (!selectedUser || !data.find(u => u.user_id === selectedUser.user_id))) {
+        if (data.length > 0 && (!selectedUser || !data.find((u: UserData) => u.user_id === selectedUser.user_id))) {
           setSelectedUser(data[0])
         }
       }
@@ -168,177 +180,153 @@ function UsersPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-lg text-gray-600">Loading users...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Navigation */}
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <nav className="flex space-x-1">
-                <Link 
-                  href="/"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link 
-                  href="/users"
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md"
-                >
-                  Browse Users & Sessions
-                </Link>
-              </nav>
-            </div>
+    <div className="flex h-[calc(100vh-96px)] relative">
+      {/* Left Panel - Users List */}
+      <div 
+        className="bg-white border-r border-gray-200 flex flex-col h-full"
+        style={{ width: `${leftPanelWidth}px` }}
+      >
+        <div className="border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center mb-4 p-6">
+            <User className="w-5 h-5 mr-2 text-blue-600" />
+            Users ({filteredUsers.length}{searchQuery && ` of ${users.length}`})
+          </h2>
+          
+          {/* Search Bar */}
+          <div className="relative mb-4 px-6">
+            <Search className="absolute left-9 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-9 text-sm"
+            />
           </div>
+          
+          {/* Sort Toggle Buttons */}
+          <div className="flex space-x-2 px-6 pb-6">
+            <button
+              onClick={() => setSortBy('recent_session')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center ${
+                sortBy === 'recent_session'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Clock className="w-4 h-4 mr-1" />
+              Recent Activity
+            </button>
+            <button
+              onClick={() => setSortBy('center_name')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center ${
+                sortBy === 'center_name'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Building className="w-4 h-4 mr-1" />
+              Center Name
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          {filteredUsers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+              <Search className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="text-gray-500 text-sm">No users found matching "{searchQuery}"</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            filteredUsers.map((user) => (
+            <div
+              key={user.user_id}
+              onClick={() => handleUserSelect(user)}
+              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                selectedUser?.user_id === user.user_id ? "bg-blue-50 border-blue-200" : ""
+              }`}
+            >
+              <div className="flex items-start">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.email}
+                  </p>
+                  
+                  {/* Center Name */}
+                  {user.center_name && (
+                    <div className="flex items-center mt-1">
+                      <Building className="w-3 h-3 text-gray-400 mr-1" />
+                      <p className="text-xs text-gray-600 truncate">
+                        {user.center_name}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Last Activity */}
+                  <div className="flex items-center mt-1">
+                    <Clock className="w-3 h-3 text-gray-400 mr-1" />
+                    <p className={`text-xs truncate ${
+                      user.last_session_time ? 'text-gray-600' : 'text-gray-400 italic'
+                    }`}>
+                      {formatLastActivity(user.last_session_time)}
+                    </p>
+                  </div>
+                  
+                  <p className="text-xs text-gray-400 truncate mt-1">
+                    ID: {user.user_id.slice(0, 8)}...
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+          )}
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-140px)] relative">
-        {/* Left Panel - Users List */}
-        <div 
-          className="bg-white border-r border-gray-200 flex flex-col"
-          style={{ width: `${leftPanelWidth}px` }}
-        >
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-              <User className="w-5 h-5 mr-2 text-blue-600" />
-              Users ({filteredUsers.length}{searchQuery && ` of ${users.length}`})
-            </h2>
-            
-            {/* Search Bar */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9 text-sm"
-              />
-            </div>
-            
-            {/* Sort Toggle Buttons */}
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setSortBy('recent_session')}
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center ${
-                  sortBy === 'recent_session'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Clock className="w-4 h-4 mr-1" />
-                Recent Activity
-              </button>
-              <button
-                onClick={() => setSortBy('center_name')}
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center ${
-                  sortBy === 'center_name'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Building className="w-4 h-4 mr-1" />
-                Center Name
-              </button>
-            </div>
-          </div>
-          
+      {/* Resize Handle */}
+      <div
+        className={`w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize relative group ${
+          isDragging ? 'bg-blue-500' : ''
+        }`}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-gray-400 group-hover:opacity-20" />
+      </div>
+
+      {/* Right Panel - User Details */}
+      <div className="flex-1 bg-white min-w-0 flex flex-col h-full">
+        {selectedUser ? (
           <div className="flex-1 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                <Search className="w-12 h-12 text-gray-300 mb-3" />
-                <p className="text-gray-500 text-sm">No users found matching "{searchQuery}"</p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-700"
-                >
-                  Clear search
-                </button>
-              </div>
-            ) : (
-              filteredUsers.map((user) => (
-              <div
-                key={user.user_id}
-                onClick={() => handleUserSelect(user)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedUser?.user_id === user.user_id ? "bg-blue-50 border-blue-200" : ""
-                }`}
-              >
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
-                    <User className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user.email}
-                    </p>
-                    
-                    {/* Center Name */}
-                    {user.center_name && (
-                      <div className="flex items-center mt-1">
-                        <Building className="w-3 h-3 text-gray-400 mr-1" />
-                        <p className="text-xs text-gray-600 truncate">
-                          {user.center_name}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Last Activity */}
-                    <div className="flex items-center mt-1">
-                      <Clock className="w-3 h-3 text-gray-400 mr-1" />
-                      <p className={`text-xs truncate ${
-                        user.last_session_time ? 'text-gray-600' : 'text-gray-400 italic'
-                      }`}>
-                        {formatLastActivity(user.last_session_time)}
-                      </p>
-                    </div>
-                    
-                    <p className="text-xs text-gray-400 truncate mt-1">
-                      ID: {user.user_id.slice(0, 8)}...
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-            )}
-          </div>
-        </div>
-
-        {/* Resize Handle */}
-        <div
-          className={`w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize relative group ${
-            isDragging ? 'bg-blue-500' : ''
-          }`}
-          onMouseDown={handleMouseDown}
-        >
-          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-gray-400 group-hover:opacity-20" />
-        </div>
-
-        {/* Right Panel - User Details */}
-        <div className="flex-1 bg-gray-50 min-w-0">
-          {selectedUser ? (
             <UserDetailContent
               userId={selectedUser.user_id}
               userEmail={selectedUser.email}
             />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a User</h3>
-                <p className="text-gray-500">Choose a user from the left panel to view their detailed session history</p>
-              </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a User</h3>
+              <p className="text-gray-500">Choose a user from the left panel to view their detailed session history</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -347,7 +335,7 @@ function UsersPageContent() {
 export default function UsersPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="text-lg text-gray-600">Loading users...</div>
       </div>
     }>

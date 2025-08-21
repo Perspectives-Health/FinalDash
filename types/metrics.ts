@@ -1,3 +1,10 @@
+export interface GeneralMetrics {
+  avg_sessions_per_day: number;
+  avg_sessions_per_week: number;
+  avg_sessions_per_month: number;
+  stickiness: number;
+}
+
 export interface MetricsData {
   usersToday: {
     unique_users: number;
@@ -42,6 +49,7 @@ export interface MetricsData {
     pacific_time: string;
   }>;
   allUsersAnalyticsByCenter: AllUsersPerCenterAnalyticsResponse;
+  generalMetrics?: GeneralMetrics;
 }
 
 export interface UserAnalyticsDetailResponse {
@@ -52,6 +60,12 @@ export interface UserAnalyticsDetailResponse {
   total_sessions: number;
   user_type: string;
   curr_extension_version: string | null;
+  followed_up_since: string | null;
+  ignore_user: boolean; // New: Added ignore_user property
+  avg_sessions_daily?: number; // Made optional
+  avg_sessions_weekly?: number; // Made optional
+  avg_sessions_monthly?: number; // Made optional
+  notes: string | null; // Added notes field
 }
 
 export interface CenterAnalyticsSummaryResponse {
@@ -61,6 +75,9 @@ export interface CenterAnalyticsSummaryResponse {
   inactive_users_count: number;
   average_sessions_per_user: number;
   users: UserAnalyticsDetailResponse[];
+  avg_sessions_daily?: number; // Made optional
+  avg_sessions_weekly?: number; // Made optional
+  avg_sessions_monthly?: number; // Made optional
 }
 
 export interface InactiveUsersOverviewResponse {

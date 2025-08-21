@@ -26,17 +26,8 @@
   --chart-accent: #06b6d4;
 }
 
-.dashboard-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 32px;
-  background: #fafbfc;
-  min-height: 100vh;
-}
-
 .dashboard-grid {
   display: grid;
-  gap: 32px;
 }
 
 .metrics-row {
@@ -82,9 +73,6 @@
 
 /* Responsive Design */
 @media (max-width: 767px) {
-  .dashboard-container {
-    padding: 16px;
-  }
   .dashboard-grid {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -139,4 +127,10 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+[data-radix-popper-content-wrapper] {
+  position: fixed !important;
+  z-index: 9999 !important;
+  background-color: white !important; /* Ensure solid background */
 }

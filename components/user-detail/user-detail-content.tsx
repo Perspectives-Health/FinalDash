@@ -8,6 +8,22 @@ import LoadingSpinner from "@/components/shared/loading-spinner"
 import StatusBadge from "@/components/shared/status-badge"
 import AudioPlayer from "@/components/shared/audio-player"
 import { api } from "@/services/api"
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter 
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/hooks/use-auth"
+import { SessionDetail } from '@/types/user'
 
 interface UserDetailContentProps {
   userId: string
@@ -272,7 +288,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       const freshSessions = await api.getUserSessions(userId)
       
       // Find the specific session we're editing
-      const freshSession = freshSessions.find(s => s.session_id === sessionId && s.workflow_id === workflowId)
+      const freshSession = freshSessions.find((s: SessionDetail) => s.session_id === sessionId && s.workflow_id === workflowId)
       
       if (freshSession) {
         console.log('✅ Found fresh session data with json_to_populate:', freshSession.json_to_populate)
@@ -402,7 +418,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       const freshSessions = await api.getUserSessions(userId)
       
       // Update current session with fresh data
-      const freshSession = freshSessions.find(s => 
+      const freshSession = freshSessions.find((s: SessionDetail) => 
         s.session_id === currentEditingSession.sessionId && 
         s.workflow_id === currentEditingSession.workflowId
       )
@@ -443,12 +459,12 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
     }
     
     let pollCount = 0
-    const maxPolls = 100 // 5 minutes at 3 second intervals
+    const maxPolls = 5 // 5 minutes at 1 minute intervals
     
     const interval = setInterval(async () => {
       try {
         pollCount++
-        setPopulateStatus(`Checking progress... (${Math.floor(pollCount * 3)}s)`)
+        setPopulateStatus(`Checking progress... (${Math.floor(pollCount * 60)}s)`)
         
         const workflowStatuses = await api.getWorkflowStatus(sessionId)
         
@@ -520,10 +536,10 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
           return
         }
         
-        setPopulateStatus(`Connection error... retrying (${Math.floor(pollCount * 3)}s)`)
+        setPopulateStatus(`Connection error... retrying (${Math.floor(pollCount * 60)}s)`)
         // Continue polling on other errors
       }
-    }, 3000) // Poll every 3 seconds
+    }, 60000) // Poll every 1 minute
     
     setPollingInterval(interval)
   }
@@ -536,7 +552,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       
       // If we have a current editing session, update it with fresh data
       if (currentEditingSession) {
-        const freshSession = freshSessions.find(s => 
+        const freshSession = freshSessions.find((s: SessionDetail) => 
           s.session_id === currentEditingSession.sessionId && 
           s.workflow_id === currentEditingSession.workflowId
         )
@@ -627,8 +643,8 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex items-center justify-between h-16 px-4">
           <h3 className="text-lg font-semibold text-gray-900">SESSION HISTORY</h3>
           <button
             onClick={exportData}
@@ -642,7 +658,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="large" />
+            <LoadingSpinner showText text="Loading user sessions..." />
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -655,29 +671,29 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
         ) : (
           <>
             {/* Sessions Table */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
-              <table className="w-full min-w-[800px]">
-                <thead className="bg-gray-50">
+            <div className="border border-gray-200 rounded-lg overflow-y-auto overflow-x-auto h-[calc(100%-128px)]">
+              <table className="w-full table-fixed">
+                <thead className="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date & Time
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Patient
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Session Type
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Workflow Type
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Session Status
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Workflow Status
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="w-32 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Audio Available
                     </th>
                   </tr>
@@ -691,26 +707,25 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => toggleRowExpansion(uniqueId, session.session_id, session.workflow_id)}
                       >
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(session.created_at).toLocaleDateString()}
-                          <br />
-                          <span className="text-xs text-gray-500">
+                        <td className="w-32 px-4 py-4 text-sm text-gray-900">
+                          <div className="text-sm">{new Date(session.created_at).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-500">
                             {new Date(session.created_at).toLocaleTimeString()}
-                          </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{session.patient_name}</div>
-                          <div className="text-xs text-gray-500">ID: {session.patient_id}</div>
+                        <td className="px-4 py-4">
+                          <div className="text-sm font-medium text-gray-900 truncate">{session.patient_name}</div>
+                          <div className="text-xs text-gray-500 truncate">ID: {session.patient_id}</div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{session.session_type}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{session.workflow_name}</td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="w-32 px-4 py-4 text-sm text-gray-900 truncate">{session.session_type}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900 truncate">{session.workflow_name}</td>
+                        <td className="w-32 px-4 py-4">
                           <StatusBadge status={session.session_status} />
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="w-32 px-4 py-4">
                           <StatusBadge status={session.workflow_status} />
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center">
+                        <td className="w-32 px-4 py-4 text-center">
                           {session.audio_link ? (
                             <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1595,7 +1610,7 @@ export default function UserDetailContent({ userId, userEmail, targetSessionId, 
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center space-x-2 mt-6">
+              <div className="flex items-center justify-center space-x-2 h-20">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}

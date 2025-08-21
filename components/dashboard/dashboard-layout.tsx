@@ -1,12 +1,13 @@
 "use client"
 
-import MetricCard from "./metric-card"
+// import MetricCard from "./metric-card"
 import TrendChart from "./trend-chart"
 import UserActivityTable from "./user-activity-table"
-import AllUsersTable from "./AllUsersTable"
+import GeneralMetrics from "./general-metrics"
+import VersionUpdate from "./version-update"
 // import AtRiskUsersList from "./at-risk-users-list"
-import WeeklyHeatMap from "./weekly-heat-map"
-import LoadingSpinner from "@/components/shared/loading-spinner"
+// import WeeklyHeatMap from "./weekly-heat-map"
+import LoadingPage from "@/components/shared/loading-page"
 import type { MetricsData } from "@/types/metrics"
 
 // Helper function to format dates relative to PST
@@ -55,15 +56,15 @@ interface DashboardLayoutProps {
   metrics: MetricsData | null
   loading: boolean
   onTimeInfoReady?: (timeInfo: { currentTime: string; metricInfo: string }) => void
-  inactiveThresholdDays: number; // Add this prop
 }
 
-export default function DashboardLayout({ metrics, loading, inactiveThresholdDays }: DashboardLayoutProps) {
+export default function DashboardLayout({ metrics, loading }: DashboardLayoutProps) {
   if (loading && !metrics) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <LoadingSpinner size="large" />
-      </div>
+      <LoadingPage 
+        title="Loading Metrics" 
+        message="Please wait while we load analytics data..." 
+      />
     )
   }
 
@@ -115,8 +116,16 @@ export default function DashboardLayout({ metrics, loading, inactiveThresholdDay
   const sessionDataLabel = isSessionDataFromToday()
 
   return (
-    <div className="dashboard-grid space-y-6">
-      {/* Top Row - Critical Metrics */}
+    <div className="dashboard-grid space-y-4">
+      {/* General Metrics Area */}
+      <GeneralMetrics
+        avgSessionsPerDay={metrics.generalMetrics?.avg_sessions_per_day || 0}
+        avgSessionsPerWeek={metrics.generalMetrics?.avg_sessions_per_week || 0}
+        avgSessionsPerMonth={metrics.generalMetrics?.avg_sessions_per_month || 0}
+        stickiness={metrics.generalMetrics?.stickiness || 0}
+        loading={loading}
+      />
+
       {/* Second Row - Trends */}
       <div className="trends-row grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* DAU Graph and New User Analytics (left, spans 2 columns) */}
@@ -147,7 +156,6 @@ export default function DashboardLayout({ metrics, loading, inactiveThresholdDay
             usersChange={usersChange ? { value: usersChange.value, direction: usersChange.direction } : undefined}
             sessionsChange={sessionsChange ? { value: sessionsChange.value, direction: sessionsChange.direction } : undefined}
           />
-          <AllUsersTable analyticsData={metrics.allUsersAnalyticsByCenter || null} loading={loading} />
         </div>
         {/* Today's User Activity (right) */}
         <UserActivityTable 
@@ -160,6 +168,11 @@ export default function DashboardLayout({ metrics, loading, inactiveThresholdDay
       {/* Third Row - Details */}
       <div className="details-row grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* <WeeklyHeatMap data={metrics.weeklyUsers} /> */}
+      </div>
+
+      {/* Version Update Section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <VersionUpdate />
       </div>
     </div>
   )

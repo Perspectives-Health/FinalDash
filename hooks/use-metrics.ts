@@ -9,13 +9,14 @@ export function useMetrics() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [inactiveThresholdDays, setInactiveThresholdDays] = useState(30) // Default to 30 days
+  const [pollingInterval, setPollingInterval] = useState(300000); // Default to 5 minutes (300000 ms)
 
   const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const [usersToday, lastUse, dau, weeklyUsers, sessionsTodayByUser, sessionsToday, allSessions, allUsersAnalyticsByCenter] =
+      const [usersToday, lastUse, dau, weeklyUsers, sessionsTodayByUser, sessionsToday, allSessions, allUsersAnalyticsByCenter, generalMetrics] =
         await Promise.all([
           api.getUsersToday(),
           api.getLastUse(),
@@ -25,6 +26,7 @@ export function useMetrics() {
           api.getSessionsToday(),
           api.getAllSessions(),
           api.getAllUsersAnalyticsByCenter(inactiveThresholdDays), // Pass threshold
+          api.getGeneralMetrics(),
         ])
 
       setMetrics({
@@ -36,6 +38,7 @@ export function useMetrics() {
         sessionsToday,
         allSessions,
         allUsersAnalyticsByCenter,
+        generalMetrics,
       })
     } catch (err) {
       console.error("Error fetching metrics:", err)
@@ -46,8 +49,10 @@ export function useMetrics() {
   }, [inactiveThresholdDays]) // Re-fetch when threshold changes
 
   useEffect(() => {
-    fetchMetrics()
-  }, [fetchMetrics])
+    fetchMetrics();
+    const intervalId = setInterval(fetchMetrics, pollingInterval);
+    return () => clearInterval(intervalId);
+  }, [fetchMetrics, pollingInterval]);
 
   return {
     metrics,
@@ -56,5 +61,7 @@ export function useMetrics() {
     refreshMetrics: fetchMetrics,
     inactiveThresholdDays,
     setInactiveThresholdDays,
+    pollingInterval,
+    setPollingInterval,
   }
 }

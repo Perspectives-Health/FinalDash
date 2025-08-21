@@ -160,7 +160,7 @@ export default function UserDetailModal({ isOpen, userId, userEmail, onClose }: 
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <LoadingSpinner size="large" />
+              <LoadingSpinner showText text="Loading user sessions..." />
             </div>
           ) : error ? (
             <div className="text-center py-12">

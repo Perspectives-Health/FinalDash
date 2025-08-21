@@ -17,7 +17,7 @@ export function useRealTimeUpdates(onUpdate?: () => void) {
       if (onUpdate) {
         onUpdate()
       }
-    }, 15000) // Update every 15 seconds
+    }, 300000) // Update every 5 minutes (300000 ms)
 
     return () => {
       clearInterval(interval)

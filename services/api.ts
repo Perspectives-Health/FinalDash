@@ -225,4 +225,115 @@ export const api = {
   async getWorkflowMapping(workflowId: string) {
     return apiRequest(`/dashboard/workflow-mapping/${workflowId}`)
   },
-}
+
+  async updateUserIgnoreStatus(userId: string, ignore: boolean) {
+    // Send ignore status as a query parameter
+    const fullUrl = `${API_BASE_URL}/dashboard/users/${userId}/ignore?ignore=${ignore}`;
+    console.log(`Setting user ${userId} ignore status to ${ignore} via:`, fullUrl);
+
+    const response = await fetch(fullUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...auth.getAuthHeader(),
+      },
+      // No body needed as 'ignore' is now a query parameter
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        auth.clearToken();
+        throw new AuthenticationError(`Authentication failed: ${response.status} ${response.statusText}`, response.status);
+      }
+      throw new Error(`Failed to update user ignore status: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  async sendEmail(to_email: string, subject: string, body: string, template_name: string | null, context: Record<string, any>) {
+    const fullUrl = `${API_BASE_URL}/emails/send`;
+    console.log("Making send email request to:", fullUrl);
+
+    const requestBody = {
+      to_email,
+      subject,
+      body,
+      template_name,
+      context,
+    };
+
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...auth.getAuthHeader(),
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        auth.clearToken();
+        throw new AuthenticationError(`Authentication failed: ${response.status} ${response.statusText}`, response.status);
+      }
+      throw new Error(`Send email failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  async updateUserNotes(userId: string, notes: string | null) {
+    const fullUrl = `${API_BASE_URL}/dashboard/users/${userId}/notes`;
+    console.log(`Updating notes for user ${userId} via:`, fullUrl);
+
+    const response = await fetch(fullUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...auth.getAuthHeader(),
+      },
+      body: JSON.stringify({ notes }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        auth.clearToken();
+        throw new AuthenticationError(`Authentication failed: ${response.status} ${response.statusText}`, response.status);
+      }
+      throw new Error(`Failed to update user notes: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  async getGeneralMetrics() {
+    return apiRequest("/dashboard/general-metrics")
+  },
+
+  async getLatestExtensionVersion() {
+    return apiRequest("/extension/latest")
+  },
+
+  async updateAllUsersExtensionVersion(newVersion: string) {
+    const fullUrl = `${API_BASE_URL}/extension/update-required/all?new_ext_version=${encodeURIComponent(newVersion)}`;
+    console.log(`Updating all users extension version to ${newVersion} via:`, fullUrl);
+
+    const response = await fetch(fullUrl, {
+      method: 'PUT',
+      headers: {
+        ...auth.getAuthHeader(),
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        auth.clearToken();
+        throw new AuthenticationError(`Authentication failed: ${response.status} ${response.statusText}`, response.status);
+      }
+      throw new Error(`Failed to update extension version: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+};

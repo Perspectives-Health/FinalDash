@@ -3,7 +3,8 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft, LayoutDashboard, Users, Clock } from "lucide-react" // Import Users icon
+import Link from "next/link" // Import Link
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -761,3 +762,6 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+// Added this to allow the app/dashboard to use these components (removed the explicit import of Sidebar from the file)
+export { LayoutDashboard, Users, Clock }
