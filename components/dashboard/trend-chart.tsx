@@ -200,7 +200,7 @@ export default function TrendChart({
   : 0
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm h-[400px]">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
           <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -219,7 +219,7 @@ export default function TrendChart({
           </div>
         </div>
       </div>
-      <div style={{ height: `${height}px` }}>
+      <div className="h-[calc(100%-64px)]">
         <Line data={chartData} options={options} />
       </div>
     </div>

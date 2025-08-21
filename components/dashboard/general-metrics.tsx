@@ -69,7 +69,7 @@ export default function GeneralMetrics({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm h-[170px] flex flex-col ">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-900">General Metrics</h3>
         <div className="text-sm text-gray-500">Across all centers</div>

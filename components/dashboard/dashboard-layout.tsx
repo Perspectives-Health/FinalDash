@@ -116,7 +116,7 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
   const sessionDataLabel = isSessionDataFromToday()
 
   return (
-    <div className="dashboard-grid space-y-4">
+    <div className="dashboard-grid space-y-4 h-[calc(100vh-96px)] flex flex-col">
       {/* General Metrics Area */}
       <GeneralMetrics
         avgSessionsPerDay={metrics.generalMetrics?.avg_sessions_per_day || 0}
@@ -127,9 +127,9 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
       />
 
       {/* Second Row - Trends */}
-      <div className="trends-row grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="trends-row grid grid-cols-1 lg:grid-cols-3 gap-4 h-[400px] px-4">
         {/* DAU Graph and New User Analytics (left, spans 2 columns) */}
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="flex flex-col gap-4 lg:col-span-2 h-full">
           <TrendChart
             data={(() => {
               console.log("Raw DAU data:", metrics.dau)
@@ -165,13 +165,8 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
           />
       </div>
 
-      {/* Third Row - Details */}
-      <div className="details-row grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* <WeeklyHeatMap data={metrics.weeklyUsers} /> */}
-      </div>
-
       {/* Version Update Section */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm h-[calc(100% - 600px)]">
         <VersionUpdate />
       </div>
     </div>

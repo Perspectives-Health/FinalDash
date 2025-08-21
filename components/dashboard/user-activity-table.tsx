@@ -19,21 +19,23 @@ export default function UserActivityTable({ data, maxRows = 10, dateLabel = "TOD
   const [showAll, setShowAll] = useState(false)
   const router = useRouter()
 
-  const sortedData = [...data].sort((a, b) => b.total_sessions - a.total_sessions)
+  // Use real data from the API
+  const dataToUse = data
+  const sortedData = [...dataToUse].sort((a, b) => b.total_sessions - a.total_sessions)
   const displayData = showAll ? sortedData : sortedData.slice(0, maxRows)
-  const maxSessions = Math.max(...data.map((item) => item.total_sessions))
+  const maxSessions = Math.max(...dataToUse.map((item) => item.total_sessions))
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-[400px] py-2">
+      <div className="flex items-center justify-between h-16 p-4 border-b border-gray-200">
+        <div className="flex items-center space-x-2 h-full">
           <BarChart3 className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-bold text-gray-900">{dateLabel}'S USER ACTIVITY</h3>
+          <h3 className="text-lg font-bold text-gray-900 h-full flex items-center">{dateLabel}'S USER ACTIVITY</h3>
         </div>
-        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{data.length} active users</span>
+        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{dataToUse.length} active users</span>
       </div>
 
-      <div className="space-y-3">
+      <div className="h-[calc(100%-64px)] overflow-y-auto ">
         {displayData.map((user, index) => (
           <div
             key={user.email}
