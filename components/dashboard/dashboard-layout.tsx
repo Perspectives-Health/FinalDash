@@ -123,6 +123,13 @@ export default function DashboardLayout({ metrics, loading }: DashboardLayoutPro
         avgSessionsPerWeek={metrics.generalMetrics?.avg_sessions_per_week || 0}
         avgSessionsPerMonth={metrics.generalMetrics?.avg_sessions_per_month || 0}
         stickiness={metrics.generalMetrics?.stickiness || 0}
+        avgSessionsPerUserPerDay={metrics.generalMetrics?.avg_sessions_per_user_per_day || 0}
+        avgSessionsPerUserPerWeek={metrics.generalMetrics?.avg_sessions_per_user_per_week || 0}
+        avgSessionsPerUserPerMonth={metrics.generalMetrics?.avg_sessions_per_user_per_month || 0}
+        avgSessionsPerWeekday={metrics.generalMetrics?.avg_sessions_per_weekday || 0}
+        avgSessionsPerUserPerWeekday={metrics.generalMetrics?.avg_sessions_per_user_per_weekday || 0}
+        avgSessionsPerWeekend={metrics.generalMetrics?.avg_sessions_per_weekend || 0}
+        avgSessionsPerUserPerWeekend={metrics.generalMetrics?.avg_sessions_per_user_per_weekend || 0}
         loading={loading}
       />
 

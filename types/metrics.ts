@@ -3,6 +3,13 @@ export interface GeneralMetrics {
   avg_sessions_per_week: number;
   avg_sessions_per_month: number;
   stickiness: number;
+  avg_sessions_per_user_per_day: number;
+  avg_sessions_per_user_per_week: number;
+  avg_sessions_per_user_per_month: number;
+  avg_sessions_per_weekday: number;
+  avg_sessions_per_user_per_weekday: number;
+  avg_sessions_per_weekend: number;
+  avg_sessions_per_user_per_weekend: number;
 }
 
 export interface MetricsData {
